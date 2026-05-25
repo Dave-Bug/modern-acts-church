@@ -59,9 +59,7 @@ export default function Hero() {
 
           {/* Buttons */}
           <div className="flex flex-wrap gap-5">
-
             <button className="bg-gradient-to-r from-sky-500 to-blue-700 text-white px-8 py-4 rounded-full font-semibold text-lg hover:scale-105 transition duration-300 shadow-[0_0_40px_rgba(14,165,233,0.35)]">
-
               Join Us Sunday
 
             </button>
