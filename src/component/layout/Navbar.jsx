@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef } from "react";
 import { FaBars, FaTimes } from "react-icons/fa";
 import { Link, useLocation } from "react-router-dom";
@@ -8,18 +9,21 @@ export default function Navbar() {
   const location = useLocation();
 
   const [active, setActive] = useState("home");
-  
-  // 🔥 HIGHLIGHT: Defaults to false so it is always hidden on first load.
-  // Change to `localStorage.getItem("maco_unlocked") === "true"` if you want it persistent later.
-  const [showMinistries, setShowMinistries] = useState(false);
+  const [showMinistries, setShowMinistries] = useState(false); // Starts hidden as requested
   const [menuOpen, setMenuOpen] = useState(false);
 
   // Mobile tap counter refs
   const tapCount = useRef(0);
   const tapTimeout = useRef(null);
 
-  // Active Scroll Detection
+  // Active Scroll Detection & Location Checking
   useEffect(() => {
+    // Highlighting fix: If user is on the /ministries page route, lock the active link highlight to ministries
+    if (location.pathname === "/ministries") {
+      setActive("ministries");
+      return;
+    }
+
     const sections = ["home", "about", "services"];
 
     const handleScroll = () => {
@@ -58,7 +62,6 @@ export default function Navbar() {
       if (/^[a-z0-9]$/.test(char)) {
         setActive((prev) => prev); 
         
-        // Custom wrapper logic to track keys seamlessly without state dependency loops
         window.__maco_typed = (window.__maco_typed || "") + char;
         if (window.__maco_typed.endsWith(targetWord)) {
           unlock();
@@ -74,7 +77,7 @@ export default function Navbar() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // MOBILE MULTI-TAP UNLOCK
+  // MOBILE MULTI-TAP UNLOCK (3x Taps)
   const handleLogoTap = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -86,7 +89,6 @@ export default function Navbar() {
       tapCount.current = 0;
     }, 2000);
 
-    // Activates precisely on 3 taps
     if (tapCount.current >= 3) {
       unlock();
       tapCount.current = 0;
@@ -107,32 +109,32 @@ export default function Navbar() {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 bg-slate-950/55 backdrop-blur-2xl border-b border-white/5">
+    <nav className="fixed top-0 left-0 w-full z-50 bg-slate-950/55 backdrop-blur-2xl border-b border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.25)]">
       <Container>
         <div className="flex items-center justify-between h-[72px] md:h-[84px]">
 
           {/* BRAND LOGO AREA */}
           <div className="flex items-center gap-3 group">
-            {/* 🔥 HIGHLIGHT: Click/Tap logic isolated here to prevent Router <Link> overrides */}
+            {/* Click/Tap logic isolated on the logo image element */}
             <button
               onClick={handleLogoTap}
-              className="relative w-11 h-11 md:w-14 md:h-14 rounded-2xl overflow-hidden border border-white/10 bg-white/5 ring-1 ring-sky-400/20 cursor-pointer focus:outline-none"
+              className="relative w-11 h-11 md:w-14 md:h-14 rounded-2xl overflow-hidden border border-white/10 bg-white/5 shadow-xl ring-1 ring-sky-400/20 transition-all duration-500 group-hover:ring-sky-400/40 group-hover:scale-105 cursor-pointer focus:outline-none"
               aria-label="Secret Menu Trigger"
             >
               <img
                 src={logo}
-                alt="Logo"
+                alt="Church Logo"
                 className="w-full h-full object-cover scale-110"
               />
-              <div className="absolute inset-0 bg-gradient-to-br from-sky-400/10 to-blue-600/20" />
+              <div className="absolute inset-0 bg-gradient-to-br from-sky-400/10 via-transparent to-blue-600/20" />
             </button>
 
-            {/* Standard link remains on the text for normal home navigation */}
+            {/* Standard link remains on the text title for navigation */}
             <Link to="/" className="leading-tight">
-              <h1 className="text-white font-bold text-sm md:text-[22px]">
-                Modern Acts Church
+              <h1 className="text-white font-bold tracking-wide text-sm sm:text-base md:text-[22px]">
+                Modern Acts Church Olongapo
               </h1>
-              <p className="text-slate-400 text-xs">
+              <p className="text-slate-400 text-[10px] sm:text-xs md:text-sm tracking-wide">
                 Faith • Worship • Community
               </p>
             </Link>
@@ -143,12 +145,26 @@ export default function Navbar() {
             {navItems.map((item) => (
               <a key={item.id} href={item.href} className={linkClass(item.id)}>
                 {item.label}
+
+                {/* Underline Highlight Spans Restored */}
+                <span
+                  className={`absolute left-0 -bottom-1 h-[2px] bg-sky-400 rounded-full transition-all duration-300 ${
+                    active === item.id ? "w-full opacity-100" : "w-0 opacity-0"
+                  }`}
+                />
               </a>
             ))}
 
             {showMinistries && (
               <Link to="/ministries" className={linkClass("ministries")}>
                 Ministries
+
+                {/* Ministries Underline Highlight Span Restored */}
+                <span
+                  className={`absolute left-0 -bottom-1 h-[2px] bg-sky-400 rounded-full transition-all duration-300 ${
+                    active === "ministries" ? "w-full opacity-100" : "w-0 opacity-0"
+                  }`}
+                />
               </Link>
             )}
           </div>
@@ -156,21 +172,23 @@ export default function Navbar() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden text-white w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10"
+            className="md:hidden text-white text-xl w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all"
           >
             {menuOpen ? <FaTimes /> : <FaBars />}
           </button>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Menu Dropdown */}
         {menuOpen && (
-          <div className="md:hidden mt-3 mb-5 p-5 rounded-3xl bg-slate-900/95 border border-white/10 flex flex-col gap-5">
+          <div className="md:hidden mb-5 rounded-3xl border border-white/10 bg-slate-900/95 backdrop-blur-2xl shadow-2xl p-5 flex flex-col gap-5">
             {navItems.map((item) => (
               <a
                 key={item.id}
                 href={item.href}
                 onClick={() => setMenuOpen(false)}
-                className={linkClass(item.id)}
+                className={`text-sm font-medium transition ${
+                  active === item.id ? "text-sky-400" : "text-white/80"
+                }`}
               >
                 {item.label}
               </a>
@@ -180,7 +198,9 @@ export default function Navbar() {
               <Link
                 to="/ministries"
                 onClick={() => setMenuOpen(false)}
-                className={linkClass("ministries")}
+                className={`text-sm font-medium ${
+                  active === "ministries" ? "text-sky-400" : "text-white/80"
+                }`}
               >
                 Ministries
               </Link>
@@ -191,3 +211,4 @@ export default function Navbar() {
     </nav>
   );
 }
+

@@ -1,4 +1,5 @@
 import Container from "../layout/Container";
+import { Link } from "react-router-dom";
 
 import {
   FaVideo,
@@ -13,202 +14,103 @@ import {
 } from "react-icons/fa";
 
 const ministries = [
-  {
-    name: "Media Team",
-    icon: FaVideo,
-    desc: "Handles livestream and media production.",
-    color: "blue",
-  },
-  {
-    name: "Worship Team",
-    icon: FaMusic,
-    desc: "Leads the church in worship and praise.",
-    color: "sky",
-  },
-  {
-    name: "Usher",
-    icon: FaHandsHelping,
-    desc: "Welcomes and assists attendees.",
-    color: "indigo",
-  },
-  {
-    name: "Finance",
-    icon: FaPiggyBank,
-    desc: "Manages church finances and giving.",
-    color: "slate",
-  },
-  {
-    name: "Admin",
-    icon: FaUserCog,
-    desc: "Supports church coordination tasks.",
-    color: "blue",
-  },
-  {
-    name: "Marshall",
-    icon: FaShieldAlt,
-    desc: "Maintains safety and order.",
-    color: "sky",
-  },
-  {
-    name: "Discipleship",
-    icon: FaBookOpen,
-    desc: "Guides spiritual growth and mentoring.",
-    color: "indigo",
-  },
+  { name: "Media Team", icon: FaVideo, desc: "Livestream & media production.", color: "blue", path: "/ministries/media" },
+  { name: "Worship Team", icon: FaMusic, desc: "Leads worship & praise.", color: "sky", path: "/ministries/worship" },
+  { name: "Usher", icon: FaHandsHelping, desc: "Welcomes attendees.", color: "indigo", path: "/ministries/usher" },
+  { name: "Finance", icon: FaPiggyBank, desc: "Handles church giving.", color: "slate", path: "/ministries/finance" },
+  { name: "Admin", icon: FaUserCog, desc: "Church coordination.", color: "blue", path: "/ministries/admin" },
+  { name: "Marshall", icon: FaShieldAlt, desc: "Safety & order.", color: "sky", path: "/ministries/marshall" },
+  { name: "Discipleship", icon: FaBookOpen, desc: "Spiritual growth.", color: "indigo", path: "/ministries/discipleship" },
 ];
 
 const colorMap = {
-  blue: {
-    bg: "bg-blue-100",
-    icon: "text-blue-600",
-    hover: "group-hover:text-blue-600",
-  },
-
-  sky: {
-    bg: "bg-sky-100",
-    icon: "text-sky-600",
-    hover: "group-hover:text-sky-600",
-  },
-
-  indigo: {
-    bg: "bg-indigo-100",
-    icon: "text-indigo-600",
-    hover: "group-hover:text-indigo-600",
-  },
-
-  slate: {
-    bg: "bg-slate-200",
-    icon: "text-slate-700",
-    hover: "group-hover:text-slate-700",
-  },
+  blue: { bg: "bg-blue-100", icon: "text-blue-600" },
+  sky: { bg: "bg-sky-100", icon: "text-sky-600" },
+  indigo: { bg: "bg-indigo-100", icon: "text-indigo-600" },
+  slate: { bg: "bg-slate-200", icon: "text-slate-700" },
 };
 
 export default function Ministries() {
   return (
-    <section
-      id="ministries"
-      className="
-        min-h-screen
-        bg-[#f5f7fb]
-        text-slate-900
-        relative overflow-hidden
-      "
-    >
-      {/* Soft Background */}
-      <div className="absolute top-0 inset-x-0 h-52 bg-gradient-to-b from-blue-100/50 to-transparent pointer-events-none" />
+    <section className="min-h-screen flex flex-col bg-[#f5f7fb] text-slate-900 relative overflow-hidden">
 
-      {/* Home Button */}
-      <div className="fixed top-5 left-5 z-50">
+      {/* Header */}
+      <Container className="flex-1 py-10 md:py-14">
+
+        <div className="fixed top-4 left-4 z-50">
         <a
           href="/"
-          className="
-            flex items-center gap-2
-            bg-white/80 backdrop-blur
-            border border-slate-200
-            shadow-sm
-            px-4 py-2.5
-            rounded-xl
-            text-slate-700
-            hover:text-blue-600
-            transition
-            font-medium
-          "
+          className="flex items-center gap-2 bg-white/80 backdrop-blur border border-slate-200 shadow-sm px-3 py-2 rounded-xl text-sm font-medium hover:text-blue-600"
         >
           <FaHome />
           Home
         </a>
       </div>
 
-      <Container className="relative z-10 py-14">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
-            Church{" "}
-            <span className="text-blue-600">
-              Ministries
-            </span>
+        {/* Title */}
+        <div className="text-center mb-8 md:mb-10">
+          <h2 className="text-3xl md:text-5xl font-black mb-2">
+            Church <span className="text-blue-600">Ministries</span>
           </h2>
-
-          <p className="text-slate-500 max-w-xl mx-auto text-sm md:text-base leading-relaxed">
-            Discover where your gifts can serve and grow within the church
-            community.
-          </p>
         </div>
 
         {/* Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5 max-w-6xl mx-auto">
+
           {ministries.map((m, i) => {
             const Icon = m.icon;
             const theme = colorMap[m.color];
 
             return (
-              <div
+              <Link
                 key={i}
+                to={m.path}
                 className="
                   group
-                  bg-white/80 backdrop-blur-sm
+                  bg-white/80 backdrop-blur
                   border border-slate-200
-                  rounded-2xl
-                  p-5
+                  rounded-xl
+                  p-4 md:p-5
                   hover:shadow-md
                   hover:-translate-y-1
                   transition-all duration-300
+                  block
                 "
               >
                 {/* Icon */}
-                <div
-                  className={`
-                    w-11 h-11 rounded-xl
-                    ${theme.bg}
-                    ${theme.icon}
-                    flex items-center justify-center
-                    text-lg mb-4
-                  `}
-                >
+                <div className={`w-10 h-10 rounded-lg ${theme.bg} ${theme.icon} flex items-center justify-center mb-3`}>
                   <Icon />
                 </div>
 
                 {/* Title */}
-                <h3 className="font-bold text-slate-900 mb-2">
+                <h3 className="font-bold text-base md:text-lg mb-1">
                   {m.name}
                 </h3>
 
-                {/* Description */}
-                <p className="text-slate-500 text-sm leading-relaxed mb-4">
+                {/* Desc */}
+                <p className="text-slate-500 text-xs md:text-sm leading-relaxed mb-3">
                   {m.desc}
                 </p>
 
-                {/* Link */}
-                <div
-                  className={`
-                    flex items-center gap-2
-                    text-xs font-semibold uppercase tracking-wide
-                    text-slate-400
-                    ${theme.hover}
-                    transition-colors
-                  `}
-                >
-                  Learn More
-
-                  <FaArrowRight
-                    size={10}
-                    className="group-hover:translate-x-1 transition-transform"
-                  />
+                {/* Action */}
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 group-hover:text-blue-600 transition">
+                  SEE MORE
+                  <FaArrowRight size={10} className="group-hover:translate-x-1 transition" />
                 </div>
-              </div>
+              </Link>
             );
           })}
-        </div>
 
-        {/* Footer */}
-        {/* Footer pushed bottom */} 
-        <div className="mt-auto pt-4"> 
-          <div className="border-t border-slate-250 pt-10 text-center">
-             <p className="text-slate-400 text-sm tracking-wide mb-2"> Serve • Grow • Make Disciples </p> 
-             <p className="text-slate-400 text-xs"> © {new Date().getFullYear()} Modern Acts Church Olongapo </p> 
-          </div> 
         </div>
       </Container>
+
+      {/* Footer */}
+      <footer className="mt-auto border-t border-slate-200 text-center py-6 bg-white/60 backdrop-blur">
+        <p className="text-slate-500 text-xs md:text-sm">
+          Serve • Grow • Make Disciples
+        </p>
+      </footer>
+
     </section>
   );
 }

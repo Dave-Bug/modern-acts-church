@@ -9,7 +9,6 @@
 *::before,
 *::after {
   box-sizing: border-box;
-
 }
 
 /* =========================
@@ -34,13 +33,10 @@ body {
   font-family: 'Inter', sans-serif;
   background: #020617;
   color: white;
-
   overflow-x: hidden;
-
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
   line-height: 1.5;
 }
 
