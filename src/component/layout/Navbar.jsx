@@ -8,11 +8,13 @@ export default function Navbar() {
   const location = useLocation();
 
   const [active, setActive] = useState("home");
-  const [showMinistries, setShowMinistries] = useState(() => {
-    return localStorage.getItem("maco_unlocked") === "true";
-  });
+  
+  // 🔥 HIGHLIGHT: Defaults to false so it is always hidden on first load.
+  // Change to `localStorage.getItem("maco_unlocked") === "true"` if you want it persistent later.
+  const [showMinistries, setShowMinistries] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Mobile tap counter refs
   const tapCount = useRef(0);
   const tapTimeout = useRef(null);
 
@@ -22,52 +24,59 @@ export default function Navbar() {
 
     const handleScroll = () => {
       let current = "home";
+
       sections.forEach((id) => {
         const el = document.getElementById(id);
         if (!el) return;
+
         const top = el.getBoundingClientRect().top;
         if (top <= 180) current = id;
       });
+
       setActive(current);
     };
 
-  window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll);
     handleScroll();
+
     return () => window.removeEventListener("scroll", handleScroll);
   }, [location.pathname]);
 
+  // Unified unlock helper function
   const unlock = () => {
     setShowMinistries(true);
     localStorage.setItem("maco_unlocked", "true");
   };
 
-  // FIX #2: Desktop secret using functional updates to avoid dependency re-renders
+  // Desktop secret: type "maco" (Optimized with functional update)
   useEffect(() => {
     const targetWord = "maco";
 
     const handleKeyDown = (e) => {
       const char = e.key.toLowerCase();
+
       if (/^[a-z0-9]$/.test(char)) {
-        setTyped((prevTyped) => {
-          const newTyped = prevTyped + char;
-          
-          if (newTyped.endsWith(targetWord)) {
-            unlock();
-            return "";
-          }
-          
-          return newTyped.slice(-targetWord.length);
-        });
+        setActive((prev) => prev); 
+        
+        // Custom wrapper logic to track keys seamlessly without state dependency loops
+        window.__maco_typed = (window.__maco_typed || "") + char;
+        if (window.__maco_typed.endsWith(targetWord)) {
+          unlock();
+          window.__maco_typed = "";
+        }
+        if (window.__maco_typed.length > targetWord.length) {
+          window.__maco_typed = window.__maco_typed.slice(-targetWord.length);
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []); // Empty dependency array means this listener mounts exactly once!
+  }, []);
 
-  // FIX #1: Cleaned up tap logic to prevent accidental navigation
+  // MOBILE MULTI-TAP UNLOCK
   const handleLogoTap = (e) => {
-    e.preventDefault(); 
+    e.preventDefault();
     e.stopPropagation();
 
     tapCount.current += 1;
@@ -77,6 +86,7 @@ export default function Navbar() {
       tapCount.current = 0;
     }, 2000);
 
+    // Activates precisely on 3 taps
     if (tapCount.current >= 3) {
       unlock();
       tapCount.current = 0;
@@ -85,12 +95,14 @@ export default function Navbar() {
 
   const linkClass = (id) =>
     `relative py-1 transition-all duration-300 font-medium ${
-      active === id ? "text-sky-400" : "text-white/80 hover:text-sky-300"
+      active === id
+        ? "text-sky-400"
+        : "text-white/80 hover:text-sky-300"
     }`;
 
   const navItems = [
-    { id: "home",     label: "Home",     href: "/#home"     },
-    { id: "about",    label: "About",    href: "/#about"    },
+    { id: "home", label: "Home", href: "/#home" },
+    { id: "about", label: "About", href: "/#about" },
     { id: "services", label: "Services", href: "/#services" },
   ];
 
@@ -99,13 +111,13 @@ export default function Navbar() {
       <Container>
         <div className="flex items-center justify-between h-[72px] md:h-[84px]">
 
-          {/* Brand Area Container */}
+          {/* BRAND LOGO AREA */}
           <div className="flex items-center gap-3 group">
-            {/* FIX #1 continued: Button wrapping the interactive logo image instead of nesting inside <Link> */}
+            {/* 🔥 HIGHLIGHT: Click/Tap logic isolated here to prevent Router <Link> overrides */}
             <button
               onClick={handleLogoTap}
-              className="relative w-11 h-11 md:w-14 md:h-14 rounded-2xl overflow-hidden border border-white/10 bg-white/5 ring-1 ring-sky-400/20 focus:outline-none"
-              aria-label="Secret Logo Unlock"
+              className="relative w-11 h-11 md:w-14 md:h-14 rounded-2xl overflow-hidden border border-white/10 bg-white/5 ring-1 ring-sky-400/20 cursor-pointer focus:outline-none"
+              aria-label="Secret Menu Trigger"
             >
               <img
                 src={logo}
@@ -115,7 +127,7 @@ export default function Navbar() {
               <div className="absolute inset-0 bg-gradient-to-br from-sky-400/10 to-blue-600/20" />
             </button>
 
-            {/* Clicking text still takes desktop users home safely */}
+            {/* Standard link remains on the text for normal home navigation */}
             <Link to="/" className="leading-tight">
               <h1 className="text-white font-bold text-sm md:text-[22px]">
                 Modern Acts Church
@@ -133,9 +145,10 @@ export default function Navbar() {
                 {item.label}
               </a>
             ))}
+
             {showMinistries && (
               <Link to="/ministries" className={linkClass("ministries")}>
-                {item.label || "Ministries"}
+                Ministries
               </Link>
             )}
           </div>
@@ -162,6 +175,7 @@ export default function Navbar() {
                 {item.label}
               </a>
             ))}
+
             {showMinistries && (
               <Link
                 to="/ministries"
