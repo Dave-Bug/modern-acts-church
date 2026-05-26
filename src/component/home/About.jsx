@@ -4,29 +4,35 @@ import { FaHeart, FaBible, FaHandsHelping } from "react-icons/fa";
 const values = [
   {
     icon: <FaHeart size={24} />,
-    title: "Love First",
-    description: "We believe in radical love that mirrors Christ's unconditional acceptance of every person.",
-  },
-  {
-    icon: <FaBible size={24} />,
-    title: "Bible Centered",
-    description: "Scripture is the foundation of our teaching, guiding us toward truth and transformation.",
+    title: "Love God",
+    description:
+      "We exist to worship God with all our hearts, living a life fully devoted to Him in every area.",
   },
   {
     icon: <FaHandsHelping size={24} />,
-    title: "Community Driven",
-    description: "We grow stronger together, supporting one another through every season of life.",
+    title: "Love People",
+    description:
+      "We are called to love others sincerely, serving with humility, kindness, and compassion.",
+  },
+  {
+    icon: <FaBible size={24} />,
+    title: "Make Disciples",
+    description:
+      "We grow and guide others in faith, helping people follow Jesus and live out His Word daily.",
   },
 ];
 
 export default function About() {
   return (
-    <section id="about" className="relative py-32 bg-slate-950 overflow-hidden">
+   <section
+  id="about"
+  className="relative min-h-screen flex items-center py-24 bg-slate-950 overflow-hidden"
+>
       {/* Background Elements */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/5 rounded-full blur-[150px]" />
       <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-sky-500/5 rounded-full blur-[120px]" />
 
-      <Container className="relative z-10">
+      <Container className="relative z-10 w-full">
         <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center">
           {/* Left Column — Image */}
           <div className="relative group">
@@ -40,7 +46,7 @@ export default function About() {
               
               {/* Floating Badge */}
               <div className="absolute bottom-6 left-6 right-6 bg-white/10 backdrop-blur-xl border border-white/10 rounded-2xl p-5">
-                <p className="text-sky-400 font-semibold text-sm uppercase tracking-wider mb-1">Est. 2019</p>
+                <p className="text-sky-400 font-semibold text-sm uppercase tracking-wider mb-1">Est. 2023</p>
                 <p className="text-white font-bold text-lg">Growing in Faith Together</p>
               </div>
             </div>

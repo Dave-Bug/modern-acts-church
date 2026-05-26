@@ -26,7 +26,7 @@ export default function Footer() {
                 M
               </div>
               <span className="text-white font-bold text-xl tracking-tight">
-                Modern Acts Church
+                Modern Acts Churchs
               </span>
             </div>
             <p className="text-slate-400 leading-relaxed max-w-md mb-8">
@@ -47,26 +47,9 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Quick Links */}
-          <div>
-            <h4 className="text-white font-bold mb-6">Quick Links</h4>
-            <ul className="space-y-3">
-              {quickLinks.map((link, index) => (
-                <li key={index}>
-                  <a
-                    href={link.href}
-                    className="text-slate-400 hover:text-sky-400 transition-colors duration-300"
-                  >
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
           {/* Contact Info */}
           <div>
-            <h4 className="text-white font-bold mb-6">Contact Us</h4>
+            <h4 className="text-white font-bold mb-6">Contact Us here</h4>
             <ul className="space-y-4">
               <li className="flex items-start gap-3 text-slate-400">
                 <FaMapMarkerAlt className="text-sky-400 mt-1 flex-shrink-0" size={16} />

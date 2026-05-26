@@ -1,58 +1,278 @@
-import { FaChurch } from "react-icons/fa";
+
+import { useEffect, useState } from "react";
+
+import {
+  FaChurch,
+  FaBars,
+  FaTimes,
+} from "react-icons/fa";
+
+import {
+  Link,
+  useLocation,
+} from "react-router-dom";
+
 import Container from "./Container";
 
 export default function Navbar() {
+  const location = useLocation();
+
+  const [active, setActive] = useState("home");
+  const [typed, setTyped] = useState("");
+  const [showMinistries, setShowMinistries] =
+    useState(false);
+
+  const [menuOpen, setMenuOpen] =
+    useState(false);
+
+  // Scroll Active Detection
+  useEffect(() => {
+    if (
+      location.pathname === "/ministries"
+    ) {
+      setActive("ministries");
+      return;
+    }
+
+    const sections = [
+      "home",
+      "about",
+      "services",
+    ];
+
+    const handleScroll = () => {
+      let current = "home";
+
+      sections.forEach((id) => {
+        const el =
+          document.getElementById(id);
+
+        if (el) {
+          const top =
+            el.getBoundingClientRect().top;
+
+          if (top <= 150) {
+            current = id;
+          }
+        }
+      });
+
+      setActive(current);
+    };
+
+    window.addEventListener(
+      "scroll",
+      handleScroll
+    );
+
+    handleScroll();
+
+    return () =>
+      window.removeEventListener(
+        "scroll",
+        handleScroll
+      );
+  }, [location.pathname]);
+
+  // Secret Ministries Unlock
+  useEffect(() => {
+    const targetWord = "maco";
+
+    const handleKeyDown = (e) => {
+      const char = e.key.toLowerCase();
+
+      if (/^[a-z0-9]$/.test(char)) {
+        const newTyped = typed + char;
+
+        setTyped(newTyped);
+
+        if (
+          newTyped.endsWith(targetWord)
+        ) {
+          setShowMinistries(true);
+          setTyped("");
+        }
+
+        if (
+          newTyped.length >
+          targetWord.length
+        ) {
+          setTyped(
+            newTyped.slice(
+              -targetWord.length
+            )
+          );
+        }
+      }
+    };
+
+    window.addEventListener(
+      "keydown",
+      handleKeyDown
+    );
+
+    return () =>
+      window.removeEventListener(
+        "keydown",
+        handleKeyDown
+      );
+  }, [typed]);
+
+  const linkClass = (id) =>
+    `relative px-2 py-1 transition font-medium ${
+      active === id
+        ? "text-sky-400"
+        : "text-white hover:text-sky-400"
+    }`;
+
   return (
-    <nav className="fixed top-0 w-full z-50 bg-slate-900/40 backdrop-blur-xl border-b border-white/10">
-
+    <nav className="fixed top-0 left-0 w-full z-50 bg-slate-950/70 backdrop-blur-xl border-b border-white/10">
       <Container>
-
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between h-16 md:h-20">
 
           {/* Logo */}
-          <div className="flex items-center gap-4">
-
-            <div className="bg-gradient-to-br from-sky-400 to-blue-600 p-3 rounded-2xl shadow-lg">
-              <FaChurch className="text-white text-xl" />
+          <Link
+            to="/"
+            className="flex items-center gap-3"
+          >
+            <div className="bg-gradient-to-br from-sky-400 to-blue-600 p-2.5 md:p-3 rounded-2xl shadow-lg">
+              <FaChurch className="text-white text-lg md:text-xl" />
             </div>
 
             <div>
-              <h1 className="text-white font-bold text-2xl tracking-wide">
-                Modern Acts Church Olongapo
+              <h1 className="text-white font-bold text-sm sm:text-lg md:text-2xl tracking-wide leading-tight">
+                Modern Acts Church
               </h1>
 
-              <p className="text-slate-400 text-sm">
+              <p className="text-slate-400 text-[10px] sm:text-xs md:text-sm">
                 Faith • Worship • Community
               </p>
             </div>
+          </Link>
 
+          {/* Desktop Nav */}
+          <div className="hidden md:flex items-center gap-8">
+
+            <a
+              href="/#home"
+              className={linkClass("home")}
+            >
+              Home
+
+              {active === "home" && (
+                <span className="absolute left-0 -bottom-1 w-full h-[2px] bg-sky-400 rounded-full" />
+              )}
+            </a>
+
+            <a
+              href="/#about"
+              className={linkClass("about")}
+            >
+              About
+
+              {active === "about" && (
+                <span className="absolute left-0 -bottom-1 w-full h-[2px] bg-sky-400 rounded-full" />
+              )}
+            </a>
+
+            <a
+              href="/#services"
+              className={linkClass(
+                "services"
+              )}
+            >
+              Services
+
+              {active === "services" && (
+                <span className="absolute left-0 -bottom-1 w-full h-[2px] bg-sky-400 rounded-full" />
+              )}
+            </a>
+
+            {showMinistries && (
+              <Link
+                to="/ministries"
+                className={linkClass(
+                  "ministries"
+                )}
+              >
+                Ministries
+
+                {active ===
+                  "ministries" && (
+                  <span className="absolute left-0 -bottom-1 w-full h-[2px] bg-sky-400 rounded-full" />
+                )}
+              </Link>
+            )}
           </div>
 
-          {/* Nav */}
-          <div className="hidden md:flex items-center gap-8 text-white font-medium">
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() =>
+              setMenuOpen(!menuOpen)
+            }
+            className="md:hidden text-white text-xl"
+          >
+            {menuOpen ? (
+              <FaTimes />
+            ) : (
+              <FaBars />
+            )}
+          </button>
+        </div>
 
-            <a href="#home" className="hover:text-sky-400 transition">
+        {/* Mobile Menu */}
+        {menuOpen && (
+          <div className="md:hidden flex flex-col gap-5 pb-6 pt-2 text-white">
+
+            <a
+              href="/#home"
+              onClick={() =>
+                setMenuOpen(false)
+              }
+              className={linkClass("home")}
+            >
               Home
             </a>
 
-            <a href="#about" className="hover:text-sky-400 transition">
+            <a
+              href="/#about"
+              onClick={() =>
+                setMenuOpen(false)
+              }
+              className={linkClass("about")}
+            >
               About
             </a>
 
-            <a href="#services" className="hover:text-sky-400 transition">
+            <a
+              href="/#services"
+              onClick={() =>
+                setMenuOpen(false)
+              }
+              className={linkClass(
+                "services"
+              )}
+            >
               Services
             </a>
 
-            <button className="bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-3 rounded-full font-semibold hover:scale-105 transition duration-300 shadow-xl">
-              Visit Us
-            </button>
-
+            {showMinistries && (
+              <Link
+                to="/ministries"
+                onClick={() =>
+                  setMenuOpen(false)
+                }
+                className={linkClass(
+                  "ministries"
+                )}
+              >
+                Ministries
+              </Link>
+            )}
           </div>
-
-        </div>
-
+        )}
       </Container>
-
     </nav>
   );
 }
+

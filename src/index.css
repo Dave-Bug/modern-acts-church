@@ -1,57 +1,130 @@
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
-/* Global Reset */
-* {
-
+/* =========================
+   GLOBAL RESET
+========================= */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+
 }
 
-/* Root Layout */
+/* =========================
+   ROOT LAYOUT
+========================= */
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
 html,
 body,
 #root {
   width: 100%;
   min-height: 100%;
-  scroll-behavior: smooth;
 }
 
-/* Main Body Styling */
+/* =========================
+   BODY
+========================= */
 body {
   font-family: 'Inter', sans-serif;
-  background-color: #020617;
+  background: #020617;
   color: white;
+
   overflow-x: hidden;
+
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  line-height: 1.5;
 }
 
-/* Better Image Behavior */
-img {
-  max-width: 100%;
+/* =========================
+   MEDIA DEFAULTS
+========================= */
+img,
+picture,
+video,
+canvas,
+svg {
   display: block;
+  max-width: 100%;
 }
 
-/* Better Button UX */
+/* =========================
+   FORM ELEMENTS
+========================= */
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
 button {
   cursor: pointer;
   border: none;
-  outline: none;
+  background: none;
 }
 
-/* Better Link Styling */
+textarea {
+  resize: vertical;
+}
+
+/* =========================
+   LINKS
+========================= */
 a {
   text-decoration: none;
   color: inherit;
 }
 
-/* Smooth Selection Color */
+/* =========================
+   LISTS
+========================= */
+ul,
+ol {
+  list-style: none;
+}
+
+/* =========================
+   SELECTION
+========================= */
 ::selection {
   background: #0ea5e9;
   color: white;
 }
 
-/* Custom Scrollbar */
+/* =========================
+   IOS SAFARI FIXES
+========================= */
+body,
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Prevent blue tap highlight on mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Better touch behavior */
+button,
+a {
+  touch-action: manipulation;
+}
+
+/* =========================
+   SCROLLBAR
+========================= */
+
+/* Chrome / Edge / Safari */
 ::-webkit-scrollbar {
   width: 10px;
 }
@@ -66,9 +139,71 @@ a {
     #0ea5e9,
     #2563eb
   );
+
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: #38bdf8;
 }
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #0ea5e9 #020617;
+}
+
+/* =========================
+   RESPONSIVE HELPERS
+========================= */
+
+/* Prevent text overflow */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+span {
+  overflow-wrap: break-word;
+}
+
+/* Better mobile spacing */
+section {
+  width: 100%;
+}
+
+/* Prevent accidental horizontal scroll */
+body {
+  overflow-x: hidden;
+}
+
+/* =========================
+   OPTIONAL UTILITIES
+========================= */
+
+/* Smooth fade animation */
+.fade-in {
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Optional glass effect */
+.glass {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
