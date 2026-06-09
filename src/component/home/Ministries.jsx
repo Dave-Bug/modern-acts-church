@@ -18,9 +18,9 @@ const ministries = [
   { name: "Worship Team", icon: FaMusic, desc: "Leads worship & praise.", color: "sky", path: "/ministries/worship" },
   { name: "Usher", icon: FaHandsHelping, desc: "Welcomes attendees.", color: "indigo", path: "/ministries/usher" },
   { name: "Finance", icon: FaPiggyBank, desc: "Handles church giving.", color: "slate", path: "/ministries/finance" },
-  { name: "Admin", icon: FaUserCog, desc: "Church coordination.", color: "blue", path: "/ministries/admin" },
+  { name: "Admin", icon: FaUserCog, desc: "Church coordination.", color: "blue", path: "/ministries/administration" },
   { name: "Marshall", icon: FaShieldAlt, desc: "Safety & order.", color: "sky", path: "/ministries/marshall" },
-  { name: "Discipleship", icon: FaBookOpen, desc: "Spiritual growth.", color: "indigo", path: "/ministries/discipleship" },
+  { name: "Discipleship", icon: FaBookOpen, desc: "Spiritual growth.", color: "indigo", path: "/ministries/discipleshipjourney" },
 ];
 
 const colorMap = {

@@ -2,10 +2,18 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./Pages/Home";
 import Ministries from "./component/home/Ministries";
 
+import DiscipleshipJourney from "./component/ministries/DiscipleshipJourney/DiscipleshipJourney";
+
+import Administration from "./component/ministries/Admin/Administration";
+import AdminTask from "./component/ministries/Admin/AdminTask";
+import AdminEvent from "./component/ministries/Admin/AdminEvent";
+
 import Finance from "./component/ministries/Finance/FinanceLedger";
 import FinanceThites from "./component/ministries/Finance/FinanceThites";
-import FinanceBasket from "./component/ministries/Finance/FinanceBasket";
+import FinanceOffering from "./component/ministries/Finance/FinanceOffering";
 import FinancePledge from "./component/ministries/Finance/FinancePledge";
+import FinanceExpenses from "./component/ministries/Finance/FinanceExpenses";
+import FinanceTotalIncome from "./component/ministries/Finance/FinanceTotalIncome";
 //usher
 import Usher from "./component/ministries/Usher/UsherDashboard";
 import UsherMembers from "./component/ministries/Usher/UsherMembers";
@@ -23,10 +31,18 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/ministries" element={<Ministries />} />
+        <Route path="/ministries/discipleshipjourney" element={<DiscipleshipJourney/>}/>
+
+        <Route path="/ministries/administration" element={<Administration />} />
+        <Route path="/ministries/administration/task" element={<AdminTask />} />
+        <Route path="/ministries/administration/event" element={<AdminEvent />} />
+
         <Route path="/ministries/finance" element={<Finance />} />
         <Route path="/ministries/finance/tithes" element={<FinanceThites />} />
-        <Route path="/ministries/finance/basket" element={<FinanceBasket />} />
+        <Route path="/ministries/finance/offering" element={<FinanceOffering />} />
         <Route path="/ministries/finance/pledge" element={<FinancePledge />} />
+        <Route path="/ministries/finance/expenses" element={<FinanceExpenses />} />
+        <Route path="/ministries/finance/total-income" element={<FinanceTotalIncome />} />
 
         <Route path="/ministries/usher" element={<Usher />} />
         <Route path="/ministries/usher/ushermember" element={<UsherMembers />} />

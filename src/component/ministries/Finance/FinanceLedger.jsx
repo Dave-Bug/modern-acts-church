@@ -141,13 +141,13 @@ export default function Finance() {
     if (item.transaction_type === "Income") {
       acc.totalIncome += amt;
       if (item.category === "Tithes") acc.tithes += amt;
-      if (item.category === "Basket") acc.basket += amt;
+      if (item.category === "Offering") acc.offering += amt;
       if (item.category === "Pledge") acc.pledge += amt;
     } else if (item.transaction_type === "Expense") {
       acc.totalExpenses += amt;
     }
     return acc;
-  }, { totalIncome: 0, totalExpenses: 0, tithes: 0, basket: 0, pledge: 0 });
+  }, { totalIncome: 0, totalExpenses: 0, tithes: 0, offering: 0, pledge: 0 });
 
   const netCashOnHand = metrics.totalIncome - metrics.totalExpenses;
 
@@ -206,7 +206,7 @@ export default function Finance() {
           {/* Row 1: Total Income and Total Expense Side-by-Side */}
           <div className="grid grid-cols-2 gap-2">
             <Link 
-              to="/finance/total-income" 
+              to="/ministries/finance/total-income" 
               className="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs hover:scale-[1.02] transition-transform duration-200 block"
             >
               <p className="text-[11px] font-bold uppercase text-slate-400 flex items-center gap-1">
@@ -216,7 +216,7 @@ export default function Finance() {
             </Link>
 
             <Link 
-              to="/finance/expenses" 
+              to="/ministries/finance/expenses" 
               className="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs hover:scale-[1.02] transition-transform duration-200 block"
             >
               <p className="text-[11px] font-bold uppercase text-slate-400 flex items-center gap-1">
@@ -226,7 +226,7 @@ export default function Finance() {
             </Link>
           </div>
 
-          {/* Row 2: Tithes, Basket, and Pledge Breakdown */}
+          {/* Row 2: Tithes, Offering, and Pledge Breakdown */}
           <div className="grid grid-cols-3 gap-2">
             <Link 
               to="/ministries/finance/tithes" 
@@ -239,11 +239,11 @@ export default function Finance() {
             </Link>
 
             <Link 
-              to="/ministries/finance/basket" 
+              to="/ministries/finance/offering" 
               className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-2xs hover:scale-[1.02] transition-transform duration-200 block"
             >
-              <p className="text-[10px] font-bold uppercase text-slate-400 truncate">Basket</p>
-              <p className="text-sm md:text-base font-black text-slate-900 mt-0.5 truncate">{formatCurrency(metrics.basket)}</p>
+              <p className="text-[10px] font-bold uppercase text-slate-400 truncate">Offering</p>
+              <p className="text-sm md:text-base font-black text-slate-900 mt-0.5 truncate">{formatCurrency(metrics.offering)}</p>
             </Link>
 
             <Link 
@@ -305,7 +305,7 @@ export default function Finance() {
                       {formData.transaction_type === "Income" ? (
                         <>
                           <option value="Tithes">Tithes</option>
-                          <option value="Basket">Basket</option>
+                          <option value="Offering">Offering</option>
                           <option value="Pledge">Pledge</option>
                         </>
                       ) : (
@@ -439,7 +439,7 @@ export default function Finance() {
                                 {editFormData.transaction_type === "Income" ? (
                                   <>
                                     <option value="Tithes">Tithes</option>
-                                    <option value="Basket">Basket</option>
+                                    <option value="Offering">Offering</option>
                                     <option value="Pledge">Pledge</option>
                                   </>
                                 ) : (
