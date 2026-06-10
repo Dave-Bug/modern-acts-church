@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FaSearch, FaSpinner, FaGraduationCap, FaRegSquare, FaCheckSquare } from "react-icons/fa";
+import { FaSearch, FaSpinner, FaGraduationCap, FaRegSquare, FaCheckSquare, FaUser, FaCalendarAlt, FaTrophy } from "react-icons/fa";
 import { supabase } from "../../../../Services/supabase";
 
 export default function Schooling() {
@@ -119,12 +119,13 @@ export default function Schooling() {
   });
 
   return (
-    <div className="space-y-5 animate-fadeIn">
+    <div className="space-y-5 p-4 max-w-7xl mx-auto animate-fadeIn">
       <div>
         <h1 className="text-xl font-black tracking-tight text-slate-900">School of Discipleship (SOD)</h1>
         <p className="text-xs font-semibold text-slate-400 mt-0.5">Track leadership validation courses, doctrine classes, and preaching tests</p>
       </div>
 
+      {/* Tabs */}
       <div className="flex border-b border-slate-200 gap-4">
         {["Women", "Men"].map((gender) => (
           <button
@@ -139,6 +140,7 @@ export default function Schooling() {
         ))}
       </div>
 
+      {/* Search Input */}
       <div className="bg-white border border-slate-200 rounded-xl p-2 shadow-xs flex items-center gap-2 max-w-md">
         <FaSearch className="text-slate-400 ml-1.5 text-xs" />
         <input
@@ -150,60 +152,75 @@ export default function Schooling() {
         />
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+      {/* Container Pipeline Grid/Table Area */}
+      <div>
         {loading ? (
           <div className="flex items-center justify-center py-16"><FaSpinner className="animate-spin text-cyan-500 text-lg" /></div>
         ) : filteredRecords.length === 0 ? (
-          <div className="py-16 text-center text-xs font-bold text-slate-400 p-6">
+          <div className="bg-white border border-slate-200 rounded-xl py-16 text-center text-xs font-bold text-slate-400 p-6 shadow-xs">
             <div className="max-w-sm mx-auto space-y-1">
               <p className="text-slate-700 font-extrabold text-sm">Schooling Submodule Pipeline Empty</p>
               <p className="text-slate-400 text-[11px] font-normal">Complete foundational entry checks inside the Soaking Pipeline stage to populate matching records here.</p>
             </div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[1300px]">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                  <th className="py-3 px-4">Names</th>
-                  <th className="py-3 px-3">Date Invited</th>
-                  <th className="py-3 px-3">Invited By</th>
-                  <th className="py-3 px-2 text-center">Age</th>
-                  <th className="py-3 px-3">Tribes</th>
-                  <th className="py-3 px-4 border-r border-slate-200">Mentor</th>
-                  <th className="py-3 px-4 text-center bg-blue-50/30 text-blue-800">VLC</th>
-                  <th className="py-3 px-4 text-center bg-blue-50/30 text-blue-800">SOD 1</th>
-                  <th className="py-3 px-4 text-center bg-blue-50/30 text-blue-800">SOD 2</th>
-                  <th className="py-3 px-4 text-center bg-blue-50/30 text-blue-800">SOD 3</th>
-                  <th className="py-3 px-5 text-center bg-indigo-50/40 text-indigo-800 border-r border-slate-200">Preaching Test</th>
-                  <th className="py-3 px-4 text-center border-r border-slate-200">Proceed</th>
-                  <th className="py-3 px-4 text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-600">
-                {filteredRecords.map((person) => {
-                  const hasVlc = parseBool(person.vlc);
-                  const hasSod1 = parseBool(person.sod_1);
-                  const hasSod2 = parseBool(person.sod_2);
-                  const hasSod3 = parseBool(person.sod_3);
-                  const hasPreachingTest = parseBool(person.preaching_test);
-                  const isStatusActive = String(person.schooling_status || "").trim().toUpperCase() === "ACTIVE";
+          <>
+            {/* MOBILE ONLY LAYOUT (CARDS) */}
+            <div className="block md:hidden space-y-4">
+              {filteredRecords.map((person) => {
+                const hasVlc = parseBool(person.vlc);
+                const hasSod1 = parseBool(person.sod_1);
+                const hasSod2 = parseBool(person.sod_2);
+                const hasSod3 = parseBool(person.sod_3);
+                const hasPreachingTest = parseBool(person.preaching_test);
+                const isStatusActive = String(person.schooling_status || "").trim().toUpperCase() === "ACTIVE";
+                const isReadyToGraduate = hasVlc && hasSod1 && hasSod2 && hasSod3 && hasPreachingTest && isStatusActive;
 
-                  const isReadyToGraduate = hasVlc && hasSod1 && hasSod2 && hasSod3 && hasPreachingTest && isStatusActive;
+                return (
+                  <div key={person.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-4">
+                    {/* Header: Name and Status */}
+                    <div className="flex justify-between items-start gap-2">
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-sm capitalize flex items-center gap-1.5">
+                          <FaUser className="text-slate-300 text-xs shrink-0" />
+                          {person.full_name}
+                        </h3>
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          <span className="text-cyan-700 bg-cyan-50 border border-cyan-100 px-1.5 py-0.5 rounded font-bold text-[9px] uppercase">
+                            {person.tribe || "VISITOR"}
+                          </span>
+                          <span className="text-slate-400 font-mono text-[10px] flex items-center gap-1">
+                            <FaCalendarAlt className="text-[9px]" /> {person.date_invited || "—"}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <select
+                        value={isStatusActive ? "Active" : "Inactive"}
+                        onChange={(e) => handleStatusChange(person.id, e.target.value)}
+                        className={`text-[10px] font-bold px-2 py-1 rounded border focus:outline-none cursor-pointer transition-colors uppercase ${
+                          !isStatusActive
+                            ? "bg-rose-50 border-rose-200 text-rose-700"
+                            : "bg-emerald-50 border-emerald-200 text-emerald-700"
+                        }`}
+                      >
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                      </select>
+                    </div>
 
-                  return (
-                    <tr key={person.id} className="hover:bg-slate-50/30 transition-colors">
-                      <td className="py-3.5 px-4 font-bold text-slate-900 capitalize">{person.full_name}</td>
-                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[11px]">{person.date_invited || "—"}</td>
-                      <td className="py-3.5 px-3 text-slate-500 text-[11px] font-bold">{person.invited_by || "—"}</td>
-                      <td className="py-3.5 px-2 text-center font-mono">{person.age || "—"}</td>
-                      <td className="py-3.5 px-3">
-                        <span className="text-cyan-700 bg-cyan-50 border border-cyan-100 px-2 py-0.5 rounded font-bold text-[10px] uppercase">
-                          {person.tribe || "VISITOR"}
-                        </span>
-                      </td>
-
-                      <td className="py-3.5 px-4 border-r border-slate-200">
+                    {/* Metadata Context Grid */}
+                    <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-50 p-2 rounded-lg border border-slate-100">
+                      <div>
+                        <span className="text-slate-400 block text-[9px] uppercase font-bold">Invited By</span>
+                        <span className="text-slate-700 font-bold">{person.invited_by || "—"}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[9px] uppercase font-bold">Age</span>
+                        <span className="text-slate-700 font-mono">{person.age || "—"}</span>
+                      </div>
+                      <div className="col-span-2 pt-1 border-t border-slate-200/60">
+                        <span className="text-slate-400 block text-[9px] uppercase font-bold">Mentor Lead</span>
                         {editingCell?.id === person.id && editingCell?.field === "mentor" ? (
                           <input
                             type="text" value={editValue}
@@ -211,80 +228,237 @@ export default function Schooling() {
                             onBlur={() => saveTextUpdate(person.id, "mentor")}
                             onKeyDown={(e) => e.key === "Enter" && saveTextUpdate(person.id, "mentor")}
                             autoFocus
-                            className="border border-slate-300 text-xs px-1.5 py-0.5 rounded focus:outline-none w-full max-w-[130px]"
+                            className="border border-slate-300 text-xs px-2 py-0.5 mt-0.5 rounded focus:outline-none w-full max-w-[180px] bg-white"
                           />
                         ) : (
                           <div 
                             onClick={() => { setEditingCell({ id: person.id, field: "mentor" }); setEditValue(person.mentor || ""); }}
-                            className="text-blue-600 hover:text-blue-700 font-bold text-[11px] cursor-pointer"
+                            className="text-blue-600 hover:text-blue-700 font-bold cursor-pointer underline decoration-dotted mt-0.5"
                           >
                             {person.mentor || "Assign Mentor +"}
                           </div>
                         )}
-                      </td>
+                      </div>
+                    </div>
 
-                      <td className="py-3.5 px-4 text-center bg-blue-50/10">
-                        <button onClick={() => toggleCheckbox(person.id, "vlc", hasVlc)} className="text-base text-blue-600 cursor-pointer align-middle focus:outline-none">
-                          {hasVlc ? <FaCheckSquare /> : <FaRegSquare className="text-slate-300" />}
-                        </button>
-                      </td>
-                      <td className="py-3.5 px-4 text-center bg-blue-50/10">
-                        <button onClick={() => toggleCheckbox(person.id, "sod_1", hasSod1)} className="text-base text-blue-600 cursor-pointer align-middle focus:outline-none">
-                          {hasSod1 ? <FaCheckSquare /> : <FaRegSquare className="text-slate-300" />}
-                        </button>
-                      </td>
-                      <td className="py-3.5 px-4 text-center bg-blue-50/10">
-                        <button onClick={() => toggleCheckbox(person.id, "sod_2", hasSod2)} className="text-base text-blue-600 cursor-pointer align-middle focus:outline-none">
-                          {hasSod2 ? <FaCheckSquare /> : <FaRegSquare className="text-slate-300" />}
-                        </button>
-                      </td>
-                      <td className="py-3.5 px-4 text-center bg-blue-50/10">
-                        <button onClick={() => toggleCheckbox(person.id, "sod_3", hasSod3)} className="text-base text-blue-600 cursor-pointer align-middle focus:outline-none">
-                          {hasSod3 ? <FaCheckSquare /> : <FaRegSquare className="text-slate-300" />}
-                        </button>
-                      </td>
-                      
-                      <td className="py-3.5 px-5 text-center bg-indigo-50/10 border-r border-slate-200">
-                        <button onClick={() => toggleCheckbox(person.id, "preaching_test", hasPreachingTest)} className="text-base text-indigo-600 cursor-pointer align-middle focus:outline-none">
-                          {hasPreachingTest ? <FaCheckSquare /> : <FaRegSquare className="text-slate-300" />}
-                        </button>
-                      </td>
-
-                      <td className="py-3.5 px-4 text-center border-r border-slate-200 font-bold">
-                        {isReadyToGraduate ? (
-                          <button
-                            onClick={() => handleGraduation(person)}
-                            className="inline-flex items-center gap-1 text-[10px] font-black bg-emerald-600 text-black hover:bg-emerald-700 px-2.5 py-1 rounded-md shadow-xs transition-all cursor-pointer"
-                          >
-                            Graduate <FaGraduationCap className="text-xs" />
-                          </button>
-                        ) : (
-                          <span className="text-slate-300 font-bold text-[11px]">Onprocess</span>
-                        )}
-                      </td>
-
-                      <td className="py-3.5 px-4 text-center">
-                        <select
-                          value={isStatusActive ? "Active" : "Inactive"}
-                          onChange={(e) => handleStatusChange(person.id, e.target.value)}
-                          className={`text-[11px] font-bold px-2 py-1 rounded border focus:outline-none cursor-pointer transition-colors uppercase ${
-                            !isStatusActive
-                              ? "bg-rose-50 border-rose-200 text-rose-700"
-                              : "bg-emerald-50 border-emerald-200 text-emerald-700"
+                    {/* Checkboxes Checklist Block */}
+                    <div className="space-y-2">
+                      <span className="text-slate-400 block text-[9px] uppercase font-black tracking-wider">Course Progression Modules</span>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {/* VLC */}
+                        <button 
+                          onClick={() => toggleCheckbox(person.id, "vlc", hasVlc)}
+                          className={`flex items-center gap-2 p-2 rounded-lg border text-left text-[11px] font-bold transition-all ${
+                            hasVlc ? 'bg-blue-50/50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-500'
                           }`}
                         >
-                          <option value="Active">Active</option>
-                          <option value="Inactive">Inactive</option>
-                        </select>
-                      </td>
+                          {hasVlc ? <FaCheckSquare className="text-sm shrink-0" /> : <FaRegSquare className="text-sm text-slate-300 shrink-0" />}
+                          <span>VLC Track</span>
+                        </button>
+
+                        {/* SOD 1 */}
+                        <button 
+                          onClick={() => toggleCheckbox(person.id, "sod_1", hasSod1)}
+                          className={`flex items-center gap-2 p-2 rounded-lg border text-left text-[11px] font-bold transition-all ${
+                            hasSod1 ? 'bg-blue-50/50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-500'
+                          }`}
+                        >
+                          {hasSod1 ? <FaCheckSquare className="text-sm shrink-0" /> : <FaRegSquare className="text-sm text-slate-300 shrink-0" />}
+                          <span>SOD 1 Module</span>
+                        </button>
+
+                        {/* SOD 2 */}
+                        <button 
+                          onClick={() => toggleCheckbox(person.id, "sod_2", hasSod2)}
+                          className={`flex items-center gap-2 p-2 rounded-lg border text-left text-[11px] font-bold transition-all ${
+                            hasSod2 ? 'bg-blue-50/50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-500'
+                          }`}
+                        >
+                          {hasSod2 ? <FaCheckSquare className="text-sm shrink-0" /> : <FaRegSquare className="text-sm text-slate-300 shrink-0" />}
+                          <span>SOD 2 Module</span>
+                        </button>
+
+                        {/* SOD 3 */}
+                        <button 
+                          onClick={() => toggleCheckbox(person.id, "sod_3", hasSod3)}
+                          className={`flex items-center gap-2 p-2 rounded-lg border text-left text-[11px] font-bold transition-all ${
+                            hasSod3 ? 'bg-blue-50/50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-500'
+                          }`}
+                        >
+                          {hasSod3 ? <FaCheckSquare className="text-sm shrink-0" /> : <FaRegSquare className="text-sm text-slate-300 shrink-0" />}
+                          <span>SOD 3 Module</span>
+                        </button>
+
+                        {/* Preaching Test */}
+                        <button 
+                          onClick={() => toggleCheckbox(person.id, "preaching_test", hasPreachingTest)}
+                          className={`flex items-center gap-2 p-2 rounded-lg border text-left text-[11px] font-bold transition-all col-span-2 sm:col-span-1 ${
+                            hasPreachingTest ? 'bg-indigo-50/60 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-500'
+                          }`}
+                        >
+                          {hasPreachingTest ? <FaCheckSquare className="text-sm text-indigo-600 shrink-0" /> : <FaRegSquare className="text-sm text-slate-300 shrink-0" />}
+                          <span>Preaching Exam</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Graduation Control Handoff */}
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-end">
+                      {isReadyToGraduate ? (
+                        <button
+                          onClick={() => handleGraduation(person)}
+                          className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-xs font-black bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer active:scale-95"
+                        >
+                          Graduate & Complete Track <FaGraduationCap className="text-sm" />
+                        </button>
+                      ) : (
+                        <div className="text-[11px] font-bold text-slate-400 bg-slate-50 border border-slate-100 rounded-lg px-3 py-1.5 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse"></span>
+                          Incomplete Course Action Core Requirements
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* DESKTOP MATRIX VIEW (TRADITIONAL TABLE) */}
+            <div className="hidden md:block bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[1300px]">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                      <th className="py-3 px-4">Names</th>
+                      <th className="py-3 px-3">Date Invited</th>
+                      <th className="py-3 px-3">Invited By</th>
+                      <th className="py-3 px-2 text-center">Age</th>
+                      <th className="py-3 px-3">Tribes</th>
+                      <th className="py-3 px-4 border-r border-slate-200">Mentor</th>
+                      <th className="py-3 px-4 text-center bg-blue-50/30 text-blue-800">VLC</th>
+                      <th className="py-3 px-4 text-center bg-blue-50/30 text-blue-800">SOD 1</th>
+                      <th className="py-3 px-4 text-center bg-blue-50/30 text-blue-800">SOD 2</th>
+                      <th className="py-3 px-4 text-center bg-blue-50/30 text-blue-800">SOD 3</th>
+                      <th className="py-3 px-5 text-center bg-indigo-50/40 text-indigo-800 border-r border-slate-200">Preaching Test</th>
+                      <th className="py-3 px-4 text-center border-r border-slate-200">Proceed</th>
+                      <th className="py-3 px-4 text-center">Status</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-600">
+                    {filteredRecords.map((person) => {
+                      const hasVlc = parseBool(person.vlc);
+                      const hasSod1 = parseBool(person.sod_1);
+                      const hasSod2 = parseBool(person.sod_2);
+                      const hasSod3 = parseBool(person.sod_3);
+                      const hasPreachingTest = parseBool(person.preaching_test);
+                      const isStatusActive = String(person.schooling_status || "").trim().toUpperCase() === "ACTIVE";
+                      const isReadyToGraduate = hasVlc && hasSod1 && hasSod2 && hasSod3 && hasPreachingTest && isStatusActive;
+
+                      return (
+                        <tr key={person.id} className="hover:bg-slate-50/30 transition-colors">
+                          <td className="py-3.5 px-4 font-bold text-slate-900 capitalize">
+                            <div className="whitespace-nowrap">{person.full_name}</div>
+                          </td>
+                          <td className="py-3.5 px-3 text-slate-400 font-mono text-[11px]">
+                            <div className="whitespace-nowrap">{person.date_invited || "—"}</div>
+                          </td>
+                          <td className="py-3.5 px-3 text-slate-500 text-[11px] font-bold">
+                            <div className="whitespace-nowrap">{person.invited_by || "—"}</div>
+                          </td>
+                          <td className="py-3.5 px-2 text-center font-mono">{person.age || "—"}</td>
+                          <td className="py-3.5 px-3">
+                            <span className="text-cyan-700 bg-cyan-50 border border-cyan-100 px-2 py-0.5 rounded font-bold text-[10px] uppercase whitespace-nowrap">
+                              {person.tribe || "VISITOR"}
+                            </span>
+                          </td>
+
+                          <td className="py-3.5 px-4 border-r border-slate-200">
+                            {editingCell?.id === person.id && editingCell?.field === "mentor" ? (
+                              <div className="max-w-[130px]">
+                                <input
+                                  type="text" value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  onBlur={() => saveTextUpdate(person.id, "mentor")}
+                                  onKeyDown={(e) => e.key === "Enter" && saveTextUpdate(person.id, "mentor")}
+                                  autoFocus
+                                  className="border border-slate-300 text-xs px-1.5 py-0.5 rounded focus:outline-none w-full"
+                                />
+                              </div>
+                            ) : (
+                              <div 
+                                onClick={() => { setEditingCell({ id: person.id, field: "mentor" }); setEditValue(person.mentor || ""); }}
+                                className="text-blue-600 hover:text-blue-700 font-bold text-[11px] cursor-pointer whitespace-nowrap"
+                              >
+                                {person.mentor || "Assign Mentor +"}
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="py-3.5 px-4 text-center bg-blue-50/10">
+                            <button onClick={() => toggleCheckbox(person.id, "vlc", hasVlc)} className="text-base text-blue-600 cursor-pointer align-middle focus:outline-none">
+                              {hasVlc ? <FaCheckSquare /> : <FaRegSquare className="text-slate-300" />}
+                            </button>
+                          </td>
+                          <td className="py-3.5 px-4 text-center bg-blue-50/10">
+                            <button onClick={() => toggleCheckbox(person.id, "sod_1", hasSod1)} className="text-base text-blue-600 cursor-pointer align-middle focus:outline-none">
+                              {hasSod1 ? <FaCheckSquare /> : <FaRegSquare className="text-slate-300" />}
+                            </button>
+                          </td>
+                          <td className="py-3.5 px-4 text-center bg-blue-50/10">
+                            <button onClick={() => toggleCheckbox(person.id, "sod_2", hasSod2)} className="text-base text-blue-600 cursor-pointer align-middle focus:outline-none">
+                              {hasSod2 ? <FaCheckSquare /> : <FaRegSquare className="text-slate-300" />}
+                            </button>
+                          </td>
+                          <td className="py-3.5 px-4 text-center bg-blue-50/10">
+                            <button onClick={() => toggleCheckbox(person.id, "sod_3", hasSod3)} className="text-base text-blue-600 cursor-pointer align-middle focus:outline-none">
+                              {hasSod3 ? <FaCheckSquare /> : <FaRegSquare className="text-slate-300" />}
+                            </button>
+                          </td>
+                          
+                          <td className="py-3.5 px-5 text-center bg-indigo-50/10 border-r border-slate-200">
+                            <button onClick={() => toggleCheckbox(person.id, "preaching_test", hasPreachingTest)} className="text-base text-indigo-600 cursor-pointer align-middle focus:outline-none">
+                              {hasPreachingTest ? <FaCheckSquare /> : <FaRegSquare className="text-slate-300" />}
+                            </button>
+                          </td>
+
+                          <td className="py-3.5 px-4 text-center border-r border-slate-200 font-bold">
+                            {isReadyToGraduate ? (
+                              <button
+                                onClick={() => handleGraduation(person)}
+                                className="inline-flex items-center gap-1 text-[10px] font-black bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1 rounded-md shadow-xs transition-all cursor-pointer active:scale-95"
+                              >
+                                Graduate <FaGraduationCap className="text-xs" />
+                              </button>
+                            ) : (
+                              <span className="text-slate-300 font-bold text-[11px] whitespace-nowrap">Onprocess</span>
+                            )}
+                          </td>
+
+                          <td className="py-3.5 px-4 text-center">
+                            <select
+                              value={isStatusActive ? "Active" : "Inactive"}
+                              onChange={(e) => handleStatusChange(person.id, e.target.value)}
+                              className={`text-[11px] font-bold px-2 py-1 rounded border focus:outline-none cursor-pointer transition-colors uppercase ${
+                                !isStatusActive
+                                  ? "bg-rose-50 border-rose-200 text-rose-700"
+                                  : "bg-emerald-50 border-emerald-200 text-emerald-700"
+                              }`}
+                            >
+                              <option value="Active">Active</option>
+                              <option value="Inactive">Inactive</option>
+                            </select>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>
   );
 }
+
