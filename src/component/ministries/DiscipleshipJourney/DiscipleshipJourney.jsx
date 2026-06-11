@@ -157,7 +157,7 @@ export default function DiscipleshipJourney() {
         </header>
 
         {/* Dynamic Inner Container Content Loader */}
-        <div className="p-4 sm:p-6 max-w-7xl w-full mx-auto flex-1 overflow-y-auto min-h-0">
+        <div className="p-4 xl:px-32 max-w-full w-full mx-auto flex-1 overflow-y-auto min-h-0">
           {currentMenu === "Consolidation" ? (
               <Consolidation />
           ) : currentMenu === "Soul Winning" ? (

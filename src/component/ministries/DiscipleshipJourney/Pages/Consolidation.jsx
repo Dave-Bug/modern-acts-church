@@ -704,7 +704,7 @@ export default function Consolidation() {
                           disabled={!isReadyToProceed}
                           className={`w-full flex items-center justify-center gap-2 text-xs font-black uppercase tracking-wider py-2.5 rounded-xl transition-all ${
                             isReadyToProceed 
-                              ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs" 
+                              ? "bg-emerald-600 hover:bg-emerald-700 shadow-xs" 
                               : "bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed"
                           }`}
                         >
@@ -730,11 +730,11 @@ export default function Consolidation() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-950/40 z-50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-xl shadow-xl border border-slate-200 overflow-hidden flex flex-col animate-scaleUp max-h-[90vh]">
-            <div className="bg-slate-900 px-4 py-3 border-b border-slate-800 flex items-center justify-between text-white shrink-0">
-              <h3 className="text-xs font-black uppercase tracking-wider">
+            <div className="bg-slate-900 px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
+              <h3 className="text-xs font-black text-white uppercase tracking-wider">
                 Log New Profile ({activeTab})
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white cursor-pointer p-1"><FaTimes /></button>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-black cursor-pointer p-1"><FaTimes /></button>
             </div>
 
             <form onSubmit={handleCreateEntry} className="p-4 space-y-4 text-xs overflow-y-auto">

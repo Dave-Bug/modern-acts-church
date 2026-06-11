@@ -1,18 +1,35 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { FaHome, FaCalendarAlt, FaCheckCircle, FaSpinner, FaSave, FaSearch, FaUserPlus, FaTimes, FaFileDownload } from "react-icons/fa";
+import { 
+  FaHome, 
+  FaCalendarAlt, 
+  FaCheckCircle, 
+  FaSpinner, 
+  FaSave, 
+  FaSearch, 
+  FaUserPlus, 
+  FaTimes, 
+  FaFileDownload, 
+  FaEye 
+} from "react-icons/fa";
 import { supabase } from "../../../Services/supabase";
 
 export default function UsherAttendance() {
+  const [showInviterDropdown, setShowInviterDropdown] = useState(false);
   const [members, setMembers] = useState([]);
   const [attendance, setAttendance] = useState({});
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [insertRole, setInsertRole] = useState("Visitor"); 
   
-  const [roleFilter, setRoleFilter] = useState("All"); 
+  // Advanced Filter States
+  const [primaryFilter, setPrimaryFilter] = useState("All"); 
+  const [selectedTribe, setSelectedTribe] = useState(""); 
+  
   const [showAddVisitor, setShowAddVisitor] = useState(false);
+  const [showCheckedModal, setShowCheckedModal] = useState(false); 
   const [visitorText, setVisitorText] = useState(""); 
   const [invitedBy, setInvitedBy] = useState(""); 
 
@@ -88,7 +105,7 @@ export default function UsherAttendance() {
         setMembers([...baseRoster, ...savedVisitors]);
         setAttendance(stateMap);
       } catch (err) {
-        console.error("Roster parsing timeline error:", err.message);
+        console.error("Roster parsing error:", err.message);
       } finally {
         setLoading(false);
       }
@@ -103,41 +120,100 @@ export default function UsherAttendance() {
     }));
   };
 
-  const handleBulkVisitorSubmit = (e) => {
+  const filteredInviters = members.filter(m => {
+    const fullName = `${m.first_name} ${m.last_name || ""}`.trim().toLowerCase();
+    return fullName.includes(invitedBy.toLowerCase());
+  });
+
+  const handleBulkVisitorSubmit = async (e) => {
     e.preventDefault();
     if (!visitorText.trim()) return;
 
     const lines = visitorText.split("\n").map(line => line.trim()).filter(Boolean);
     if (lines.length === 0) return;
 
-    const timestamp = Date.now();
-    const addedPersons = [];
-    const newAttendanceUpdates = {};
+    const payloadToInsert = [];
+    let inheritedTribe = "N/A";
+    
+    if (invitedBy.trim() !== "") {
+      const inviterMatch = members.find(m => 
+        `${m.first_name} ${m.last_name || ""}`.trim().toLowerCase() === invitedBy.trim().toLowerCase()
+      );
+      
+      if (inviterMatch && inviterMatch.tribe) {
+        inheritedTribe = inviterMatch.tribe;
+      }
+    }
 
-    lines.forEach((line, index) => {
+    lines.forEach((line) => {
       const parts = line.split(/\s+/);
-      const firstName = parts[0] || "Visitor";
-      const lastName = parts.slice(1).join(" ") || "";
-      const temporaryId = `visitor-new-${timestamp}-${index}`;
+      
+      let firstName = "";
+      let middleInitial = null;
+      let lastName = "";
 
-      addedPersons.push({
-        id: temporaryId,
+      if (parts.length === 1) {
+        firstName = parts[0];
+      } else if (parts.length === 2) {
+        firstName = parts[0];
+        lastName = parts[1];
+      } else {
+        const tentativeInitialIndex = parts.length - 2;
+        const tentativeInitial = parts[tentativeInitialIndex];
+
+        if (tentativeInitial.length === 1) {
+          middleInitial = tentativeInitial.toUpperCase();
+          firstName = parts.slice(0, tentativeInitialIndex).join(" ");
+          lastName = parts[parts.length - 1];
+        } else {
+          firstName = parts.slice(0, parts.length - 1).join(" ");
+          lastName = parts[parts.length - 1];
+        }
+      }
+
+      payloadToInsert.push({
         first_name: firstName,
         last_name: lastName,
-        role: "Visitor",
-        tribe: "N/A", 
-        invited_by: invitedBy.trim() || "" 
+        middle_initial: middleInitial,
+        role: insertRole,
+        tribe: inheritedTribe, 
+        invited_by: invitedBy.trim() || null
       });
-
-      newAttendanceUpdates[temporaryId] = "Present";
     });
 
-    setMembers(prev => [...prev, ...addedPersons]);
-    setAttendance(prev => ({ ...prev, ...newAttendanceUpdates }));
+    try {
+      setSaving(true);
 
-    setVisitorText("");
-    setInvitedBy("");
-    setShowAddVisitor(false);
+      const { data: insertedRows, error: insertErr } = await supabase
+        .from("usher_members")
+        .insert(payloadToInsert)
+        .select();
+
+      if (insertErr) throw insertErr;
+
+      const newlyCreatedMembers = insertedRows || [];
+      const newAttendanceUpdates = {};
+
+      newlyCreatedMembers.forEach(newMember => {
+        newAttendanceUpdates[newMember.id] = "Present";
+      });
+
+      setMembers(prev => [...prev, ...newlyCreatedMembers]);
+      setAttendance(prev => ({ ...prev, ...newAttendanceUpdates }));
+
+      setVisitorText("");
+      setInvitedBy("");
+      setInsertRole("Visitor");
+      setShowAddVisitor(false);
+      setShowInviterDropdown(false);
+      
+      alert(`Successfully saved ${newlyCreatedMembers.length} records! Tribe set to: ${inheritedTribe}`);
+    } catch (err) {
+      console.error("Database write error:", err);
+      alert(`Insertion Failed: ${err.message}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSaveAttendance = async () => {
@@ -147,11 +223,23 @@ export default function UsherAttendance() {
       
       const payload = members.map(member => {
         const fullName = `${member.first_name} ${member.last_name || ""}`.trim();
+        
+        let finalTribe = member.tribe || "N/A";
+        if (member.invited_by) {
+          const inviterMatch = members.find(m => {
+            const fName = `${m.first_name} ${m.last_name || ""}`.trim();
+            return fName.toLowerCase() === member.invited_by.trim().toLowerCase();
+          });
+          if (inviterMatch && inviterMatch.tribe) {
+            finalTribe = inviterMatch.tribe;
+          }
+        }
+
         return {
           name: fullName,
           date: selectedDate,
-          tribe: member.tribe || "N/A",
-          invited_by: member.role === "Visitor" ? (member.invited_by || "") : "",
+          tribe: finalTribe,
+          invited_by: member.invited_by || "",
           status: attendance[member.id] || "Absent",
           service: activeService
         };
@@ -186,11 +274,18 @@ export default function UsherAttendance() {
     
     const rows = filteredMembers.map(member => {
       const fullName = `${member.first_name} ${member.last_name || ""}`.trim();
+      
+      let finalTribe = member.tribe || "N/A";
+      if (member.invited_by) {
+        const inviterMatch = members.find(m => `${m.first_name} ${m.last_name || ""}`.trim().toLowerCase() === member.invited_by.trim().toLowerCase());
+        if (inviterMatch) finalTribe = inviterMatch.tribe;
+      }
+
       return [
         fullName,
         selectedDate,
-        member.tribe || "N/A",
-        member.role === "Visitor" ? (member.invited_by || "N/A") : "",
+        finalTribe,
+        member.invited_by || "N/A",
         attendance[member.id] || "Absent",
         activeService
       ];
@@ -213,39 +308,74 @@ export default function UsherAttendance() {
     document.body.removeChild(downloadLink);
   };
 
-  const handleRoleFilterChange = (newRole) => {
-    setRoleFilter(newRole);
+  const handlePrimaryFilterChange = (value) => {
+    setPrimaryFilter(value);
+    setSelectedTribe(""); 
     setShowAddVisitor(false);
   };
 
   const filteredMembers = members.filter(member => {
-    const fullName = `${member.first_name} ${member.last_name}`.toLowerCase();
+    const fullName = `${member.first_name} ${member.last_name || ""}`.toLowerCase();
     const matchesSearch = fullName.includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === "All" || (member.role || "Member").toLowerCase() === roleFilter.toLowerCase();
-    return matchesSearch && matchesRole;
+    
+    let matchesCriteria = true;
+    if (primaryFilter === "Minister") {
+      matchesCriteria = (member.role || "").toLowerCase() === "minister";
+    } else if (primaryFilter === "Visitor") {
+      matchesCriteria = (member.role || "").toLowerCase() === "visitor";
+    } else if (primaryFilter === "Member") { 
+      matchesCriteria = (member.role || "").toLowerCase() === "member";
+    } else if (primaryFilter === "Tribe") {
+      if (selectedTribe !== "") {
+        let assignedTribe = member.tribe || "N/A";
+        if (member.invited_by) {
+          const inviterMatch = members.find(m => `${m.first_name} ${m.last_name || ""}`.trim().toLowerCase() === member.invited_by.trim().toLowerCase());
+          if (inviterMatch && inviterMatch.tribe) {
+            assignedTribe = inviterMatch.tribe;
+          }
+        }
+        matchesCriteria = assignedTribe.toLowerCase() === selectedTribe.toLowerCase();
+      }
+    }
+
+    return matchesSearch && matchesCriteria;
   });
 
   const presentCount = Object.values(attendance).filter(v => v === "Present").length;
   const absentCount = Object.values(attendance).filter(v => v === "Absent").length;
 
+  const generatePureTextBlock = () => {
+    const activePresentList = filteredMembers.filter(
+      (member) => attendance[member.id] === "Present"
+    );
+
+    if (activePresentList.length === 0) {
+      return "No records checked for this selection.";
+    }
+
+    return activePresentList
+      .map((member) => {
+        return member.invited_by
+          ? `${member.first_name} ${member.last_name || ""} (Invited by: ${member.invited_by})`.trim()
+          : `${member.first_name} ${member.last_name || ""}`.trim();
+      })
+      .join("\n");
+  };
+
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-12">
-      {/* Home / Back Action Button */}
-     <div className="fixed top-4 left-4 z-50">
+      <div className="fixed top-4 left-4 z-50">
         <Link
           to="/ministries/usher"
-          className="flex items-center gap-2 bg-white/80 backdrop-blur border border-slate-200 px-3 py-2 rounded-xl text-sm font-medium text-slate-700 hover:text-blue-600 transition-colors"
+          className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-2 rounded-xl text-sm font-medium text-slate-700 hover:text-blue-600 transition-colors"
         >
           <FaHome />
           Back
         </Link>
       </div>
 
-      {/* Main Container */}
       <div className="max-w-4xl mx-auto px-4 pt-16 md:pt-20">
-        
-        {/* Header Title (Scrolls away) */}
-              <div className="text-center mb-8 md:mb-10">
+        <div className="text-center mb-8 md:mb-10">
           <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center text-xl mx-auto mb-3">
             📋
           </div>
@@ -257,7 +387,6 @@ export default function UsherAttendance() {
           </p>
         </div>
 
-        {/* Date Selection Box (Scrolls away) */}
         <div className="bg-white border border-slate-100 rounded-xl p-3 mb-4 shadow-sm flex flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 flex-1">
             <FaCalendarAlt className="text-blue-500 text-sm flex-shrink-0" />
@@ -275,7 +404,6 @@ export default function UsherAttendance() {
           </span>
         </div>
 
-        {/* Dynamic Stats Row Dashboard (Scrolls away) */}
         <div className="grid grid-cols-3 gap-3 mb-4">
           <div className="bg-white border border-slate-100 rounded-xl p-2.5 text-center shadow-sm">
             <p className="text-slate-400 text-[9px] md:text-[10px] font-bold uppercase tracking-wider">Total</p>
@@ -291,9 +419,6 @@ export default function UsherAttendance() {
           </div>
         </div>
 
-        {/* ONLY THIS ROW IS STICKY
-            Pins your search bar and action buttons to the top when scrolling down.
-        */}
         <div className="sticky top-0 z-40 bg-[#f8fafc] py-3 border-b border-slate-200/50 shadow-[0_4px_6px_-1px_rgba(248,250,252,0.9)] mb-4">
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="flex-1 bg-white border border-slate-100 rounded-xl px-3 py-2 flex items-center gap-2 shadow-sm">
@@ -309,19 +434,50 @@ export default function UsherAttendance() {
 
             <div className="bg-white border border-slate-100 rounded-xl px-2 py-2 flex items-center shadow-sm sm:w-44">
               <select
-                value={roleFilter}
-                onChange={(e) => handleRoleFilterChange(e.target.value)}
+                value={primaryFilter}
+                onChange={(e) => handlePrimaryFilterChange(e.target.value)}
                 className="w-full bg-transparent border-none focus:outline-none text-xs md:text-sm font-bold text-slate-600 cursor-pointer focus:ring-0"
               >
                 <option value="All">All Roles</option>
-                <option value="Member">Members</option>
+                <option value="Tribe">By Tribe</option>
                 <option value="Minister">Ministers</option>
+                <option value="Member">Members</option>
                 <option value="Visitor">Visitors</option>
               </select>
             </div>
 
-            <div className="grid grid-cols-3 sm:flex gap-2">
+            {primaryFilter === "Tribe" && (
+              <div className="bg-white border border-blue-200 rounded-xl px-2 py-2 flex items-center shadow-sm sm:w-44 animate-fadeIn">
+                <select
+                  value={selectedTribe}
+                  onChange={(e) => setSelectedTribe(e.target.value)}
+                  className="w-full bg-transparent border-none focus:outline-none text-xs md:text-sm font-bold text-blue-600 cursor-pointer focus:ring-0"
+                >
+                  <option value="">Select Tribe</option>
+                  <option value="Samuel/Abraham">Samuel/Abraham</option>
+                  <option value="Leah/Ruth">Leah/Ruth</option>
+                  <option value="Yeshua">Yeshua</option>
+                  <option value="Daniel">Daniel</option>
+                  <option value="Esther">Esther</option>
+                  <option value="Sarah">Sarah</option>
+                  <option value="Josiah">Josiah</option>
+                  <option value="N/A">N/A</option>
+                </select>
+              </div>
+            )}
+
+            <div className="grid grid-cols-4 sm:flex gap-2">
               <button
+                type="button"
+                onClick={() => setShowCheckedModal(true)}
+                className="flex items-center justify-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold py-2 px-2 rounded-xl text-xs md:text-sm transition-colors sm:min-w-[95px]"
+              >
+                <FaEye className="text-blue-500" />
+                <span>Checked</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setShowAddVisitor(prev => !prev)}
                 className={`flex items-center justify-center gap-1.5 font-bold py-2 px-3 rounded-xl text-xs md:text-sm transition-colors border sm:min-w-[95px] ${
                   showAddVisitor 
@@ -334,16 +490,18 @@ export default function UsherAttendance() {
               </button>
 
               <button
+                type="button"
                 onClick={handleExportToExcel}
                 className="flex items-center justify-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold py-2 px-3 rounded-xl text-xs md:text-sm transition-colors sm:min-w-[95px]"
               >
-                <FaFileDownload className="text-slate-500" /> Export
+                <FaFileDownload className="text-slate-500" /> <span>Export</span>
               </button>
 
               <button
+                type="button"
                 onClick={handleSaveAttendance}
                 disabled={loading || saving || members.length === 0}
-                className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 font-bold py-2 px-4 rounded-xl text-xs md:text-sm transition-colors shadow-sm sm:min-w-[95px]"
+                className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 text-white font-bold py-2 px-4 rounded-xl text-xs md:text-sm transition-colors shadow-sm sm:min-w-[95px]"
               >
                 {saving ? <FaSpinner className="animate-spin" /> : <FaSave />}
                 <span>Save</span>
@@ -351,46 +509,118 @@ export default function UsherAttendance() {
             </div>
           </div>
 
-          {/* Insert Visitor Form Drawer (Stays neatly grouped inside the sticky frame) */}
           {showAddVisitor && (
             <div className="mt-3 p-4 bg-white border border-slate-200 rounded-xl shadow-md relative animate-fadeIn">
               <h3 className="text-xs md:text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
-                <span>📋 Quick Record Insertion</span>
+                <span>📋 Quick Database Member Insertion</span>
               </h3>
               <form onSubmit={handleBulkVisitorSubmit} className="flex flex-col gap-3">
+                
+                <div className="w-full bg-slate-50 border border-slate-100 p-2.5 rounded-lg flex items-center gap-3">
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Select Database Role:</label>
+                  <div className="flex gap-2">
+                    {["Visitor", "Member", "Minister"].map((roleOption) => (
+                      <button
+                        key={roleOption}
+                        type="button"
+                        onClick={() => setInsertRole(roleOption)}
+                        className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
+                          insertRole === roleOption
+                            ? "bg-blue-600 text-white"
+                            : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        {roleOption}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="md:col-span-2">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Names (One per line)</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                      Names (One per line)
+                    </label>
                     <textarea
-                      rows={2}
-                      placeholder={"Kyle Korver\nLeBron James"}
+                      rows={3}
+                      placeholder={"Christian Dave S Carmesis\nIan Kyle Maghinay\nChristian"}
                       required
                       value={visitorText}
                       onChange={(e) => setVisitorText(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-500 resize-none"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-500 resize-none font-mono"
                     />
+                    <p className="text-[10px] text-slate-400 mt-1 italic">
+                      * Rules: Last word becomes the last name. Single letter before the last word becomes Middle Initial.
+                    </p>
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Invited By Reference</label>
+
+                  <div className="relative">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                      Invited By Reference
+                    </label>
                     <input
                       type="text"
-                      placeholder="Optional details"
+                      placeholder="Type to search members..."
                       value={invitedBy}
-                      onChange={(e) => setInvitedBy(e.target.value)}
+                      onChange={(e) => {
+                        setInvitedBy(e.target.value);
+                        setShowInviterDropdown(true);
+                      }}
+                      onFocus={() => setShowInviterDropdown(true)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-500"
                     />
+
+                    {showInviterDropdown && invitedBy.trim() !== "" && (
+                      <div className="absolute left-0 right-0 z-50 mt-1 max-h-40 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg">
+                        {filteredInviters.length > 0 ? (
+                          filteredInviters.map((m) => {
+                            const fullName = `${m.first_name} ${m.last_name || ""}`.trim();
+                            return (
+                              <button
+                                key={m.id}
+                                type="button"
+                                onClick={() => {
+                                  setInvitedBy(fullName);
+                                  setShowInviterDropdown(false);
+                                }}
+                                className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 text-slate-700 flex justify-between items-center border-b border-slate-50 last:border-none"
+                              >
+                                <span className="font-medium">{fullName}</span>
+                                <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase font-bold">
+                                  {m.role || "Member"}
+                                </span>
+                              </button>
+                            );
+                          })
+                        ) : (
+                          <div className="px-3 py-2 text-xs text-slate-400 italic">
+                            No matching member found (Custom name)
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
+
                 <div className="flex justify-end gap-1.5 pt-2 border-t border-slate-50">
                   <button
                     type="button"
-                    onClick={() => { setShowAddVisitor(false); setVisitorText(""); }}
+                    onClick={() => { 
+                      setShowAddVisitor(false); 
+                      setVisitorText(""); 
+                      setInsertRole("Visitor"); 
+                      setShowInviterDropdown(false);
+                    }}
                     className="bg-slate-100 text-slate-600 font-bold rounded-lg text-[11px] py-1.5 px-3"
                   >
                     Cancel
                   </button>
-                  <button type="submit" className="bg-emerald-600 font-bold rounded-lg text-[11px] py-1.5 px-3.5">
-                    Confirm
+                  <button 
+                    type="submit" 
+                    disabled={saving}
+                    className="bg-emerald-600 font-bold text-white rounded-lg text-[11px] py-1.5 px-3.5 flex items-center gap-1 disabled:opacity-70"
+                  >
+                    {saving ? "Inserting..." : "Confirm & Save"}
                   </button>
                 </div>
               </form>
@@ -398,7 +628,6 @@ export default function UsherAttendance() {
           )}
         </div>
 
-        {/* Scrollable Data List Container */}
         <div className="bg-white border border-slate-100 rounded-xl shadow-sm overflow-hidden">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12">
@@ -420,19 +649,17 @@ export default function UsherAttendance() {
                     className="flex items-center justify-between px-4 py-3.5 hover:bg-slate-50/50 transition-colors cursor-pointer"
                     onClick={() => handleToggleStatus(member.id)}
                   >
-                    {/* Identity Details Panel */}
                     <div className="flex-1 pr-4 truncate">
                       <p className="font-semibold text-slate-700 text-s md:text-sm tracking-tight truncate">
                         {member.first_name} {member.last_name}
                       </p>
-                      {member.role === "Visitor" && (
+                      {member.invited_by && (
                         <span className="inline-block text-[9px] bg-orange-50 text-orange-600 font-bold px-1.5 py-0.5 rounded border border-orange-100 mt-0.5 max-w-full truncate">
-                          Visitor {member.invited_by ? `• via ${member.invited_by}` : ""}
+                          {member.role || "Visitor"} {`• via ${member.invited_by}`}
                         </span>
                       )}
                     </div>
 
-                    {/* Interactive Status Input Trigger Button */}
                     <div className="flex-shrink-0">
                       <button
                         type="button"
@@ -457,7 +684,39 @@ export default function UsherAttendance() {
           )}
         </div>
       </div>
+
+      {showCheckedModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white w-full max-w-sm p-4 rounded-xl shadow-xl flex flex-col max-h-[70vh]">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Present List</span>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(generatePureTextBlock());
+                    alert("List copied to clipboard!");
+                  }}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-bold"
+                >
+                  Copy
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setShowCheckedModal(false)}
+                  className="text-xs text-slate-400 hover:text-slate-600 font-bold"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            <pre className="flex-1 overflow-y-auto bg-slate-50 p-3.5 rounded-lg text-xs text-slate-700 font-sans whitespace-pre-wrap leading-relaxed select-text border border-slate-200">
+              {generatePureTextBlock()}
+            </pre>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
