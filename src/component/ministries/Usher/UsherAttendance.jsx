@@ -10,7 +10,8 @@ import {
   FaUserPlus, 
   FaTimes, 
   FaFileDownload, 
-  FaEye 
+  FaEye,
+  FaArrowUp // 💡 Added Arrow Icon
 } from "react-icons/fa";
 import { supabase } from "../../../Services/supabase";
 
@@ -23,6 +24,7 @@ export default function UsherAttendance() {
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [insertRole, setInsertRole] = useState("Visitor"); 
+  const [showScrollTop, setShowScrollTop] = useState(false); // 💡 State to toggle visibility
   
   // Advanced Filter States
   const [primaryFilter, setPrimaryFilter] = useState("All"); 
@@ -45,6 +47,28 @@ export default function UsherAttendance() {
     if (dayIndex === 6) return "Y.A Service";
     if (dayIndex === 0) return "Sunday Service";
     return "Regular Service";
+  };
+
+  // 💡 Monitor page scroll positioning to toggle button visibility
+  useEffect(() => {
+    const handleScrollVisibility = () => {
+      if (window.scrollY > 300) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScrollVisibility);
+    return () => window.removeEventListener("scroll", handleScrollVisibility);
+  }, []);
+
+  // 💡 Smoothly snap user back to the top of the interface
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
   };
 
   useEffect(() => {
@@ -501,7 +525,7 @@ export default function UsherAttendance() {
                 type="button"
                 onClick={handleSaveAttendance}
                 disabled={loading || saving || members.length === 0}
-                className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 text-white font-bold py-2 px-4 rounded-xl text-xs md:text-sm transition-colors shadow-sm sm:min-w-[95px]"
+                className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 font-bold py-2 px-4 rounded-xl text-xs md:text-sm transition-colors shadow-sm sm:min-w-[95px]"
               >
                 {saving ? <FaSpinner className="animate-spin" /> : <FaSave />}
                 <span>Save</span>
@@ -526,8 +550,8 @@ export default function UsherAttendance() {
                         onClick={() => setInsertRole(roleOption)}
                         className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
                           insertRole === roleOption
-                            ? "bg-blue-600 text-white"
-                            : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                            ? "bg-blue-650 text-green font-green"
+                            : "bg-blue border border-slate-250 text-slate-200 hover:bg-slate-200"
                         }`}
                       >
                         {roleOption}
@@ -543,7 +567,7 @@ export default function UsherAttendance() {
                     </label>
                     <textarea
                       rows={3}
-                      placeholder={"Christian Dave S Carmesis\nIan Kyle Maghinay\nChristian"}
+                      placeholder={"First Name Middle Initial Last Name\nChristian S. Carmesis\n"}
                       required
                       value={visitorText}
                       onChange={(e) => setVisitorText(e.target.value)}
@@ -618,7 +642,7 @@ export default function UsherAttendance() {
                   <button 
                     type="submit" 
                     disabled={saving}
-                    className="bg-emerald-600 font-bold text-white rounded-lg text-[11px] py-1.5 px-3.5 flex items-center gap-1 disabled:opacity-70"
+                    className="bg-emerald-600 font-bold rounded-lg text-[11px] py-1.5 px-3.5 flex items-center gap-1 disabled:opacity-70"
                   >
                     {saving ? "Inserting..." : "Confirm & Save"}
                   </button>
@@ -717,6 +741,19 @@ export default function UsherAttendance() {
           </div>
         </div>
       )}
+
+      {/* 💡 FLOATING SCROLL TO TOP COMPONENT */}
+      {showScrollTop && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 z-50 bg-blue-600 hover:bg-blue-700 p-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fadeIn flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          aria-label="Scroll to top"
+        >
+          <FaArrowUp className="text-sm md:text-base" />
+        </button>
+      )}
     </div>
   );
 }
+

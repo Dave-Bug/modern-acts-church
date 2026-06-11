@@ -258,7 +258,7 @@ export default function Finance() {
           {/* NEW STRATEGIC PLACEMENT: TRANSACTION NAVIGATION BAR BELOW THE METRIC TABS */}
           <div className="pt-1">
             <Link
-              to="/finance/all-transactions"
+              to="/ministries/finance/total-transaction"
               className="w-full flex items-center justify-between bg-white border border-slate-200 rounded-xl p-3 text-sm font-bold text-slate-700 hover:text-blue-600 hover:border-blue-300 transition-all shadow-2xs group"
             >
               <span className="flex items-center gap-2">

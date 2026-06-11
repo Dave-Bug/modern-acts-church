@@ -14,10 +14,12 @@ import FinanceOffering from "./component/ministries/Finance/FinanceOffering";
 import FinancePledge from "./component/ministries/Finance/FinancePledge";
 import FinanceExpenses from "./component/ministries/Finance/FinanceExpenses";
 import FinanceTotalIncome from "./component/ministries/Finance/FinanceTotalIncome";
+import FinanceTotalTransaction from "./component/ministries/Finance/FinanceTransaction";
 //usher
 import Usher from "./component/ministries/Usher/UsherDashboard";
 import UsherMembers from "./component/ministries/Usher/UsherMembers";
 import UsherAttendance from "./component/ministries/Usher/UsherAttendance";
+import UsherAttendanceDashboard from "./component/ministries/Usher/UsherAttendanceDashboard";
 
 //media
 import Media from "./component/ministries/Media/MediaDashboard";
@@ -43,10 +45,12 @@ export default function App() {
         <Route path="/ministries/finance/pledge" element={<FinancePledge />} />
         <Route path="/ministries/finance/expenses" element={<FinanceExpenses />} />
         <Route path="/ministries/finance/total-income" element={<FinanceTotalIncome />} />
+          <Route path="/ministries/finance/total-transaction" element={<FinanceTotalTransaction />} />
 
         <Route path="/ministries/usher" element={<Usher />} />
         <Route path="/ministries/usher/ushermember" element={<UsherMembers />} />
         <Route path="/ministries/usher/usherattendance" element={<UsherAttendance />} />
+         <Route path="/ministries/usher/usherdashboard" element={<UsherAttendanceDashboard />} />
 
         <Route path="/ministries/media" element={<Media />} />
         <Route path="/ministries/media/personnel" element={<MediaPersonnel />} />

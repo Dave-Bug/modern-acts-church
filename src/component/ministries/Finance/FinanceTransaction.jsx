@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { FaHome, FaPlus, FaWallet, FaArrowDown, FaArrowUp, FaSpinner, FaHistory, FaUser, FaPiggyBank } from "react-icons/fa";
-import { supabase } from "../../Services/supabase";
+import { supabase } from "../../../Services/supabase";
 
 export default function Finance() {
   const [transactions, setTransactions] = useState([]);
