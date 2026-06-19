@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { FaHome, FaCalendarAlt, FaClipboardList } from "react-icons/fa";
+import { FaHome, FaCalendarAlt, FaClipboardList, FaUserShield } from "react-icons/fa";
 import { supabase } from "../../../Services/supabase";
 
 export default function AdministrationDashboardHub() {
   const navigate = useNavigate();
   const [totalEvents, setTotalEvents] = useState(0);
   const [totalTasks, setTotalTasks] = useState(0);
+  const [totalPendingUsers, setTotalPendingUsers] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,20 +15,27 @@ export default function AdministrationDashboardHub() {
       try {
         setLoading(true);
 
-        // Fetch count for events from administration_logs table where type is 'event'
+        // 1. Fetch count for events from administration_logs table where type is 'event'
         const { count: eventCount, error: eventError } = await supabase
           .from("administration_logs")
           .select("*", { count: "exact", head: true })
           .eq("type", "event");
 
-        // Fetch count for tasks from administration_logs table where type is 'task'
+        // 2. Fetch count for tasks from administration_logs table where type is 'task'
         const { count: taskCount, error: taskError } = await supabase
           .from("administration_logs")
           .select("*", { count: "exact", head: true })
           .eq("type", "task");
 
+        // 3. 🛡️ Fetch count for new incoming registrations stuck on 'Pending' access status
+        const { count: pendingCount, error: pendingError } = await supabase
+          .from("church_auth")
+          .select("*", { count: "exact", head: true })
+          .eq("access", "Pending");
+
         if (!eventError && eventCount !== null) setTotalEvents(eventCount);
         if (!taskError && taskCount !== null) setTotalTasks(taskCount);
+        if (!pendingError && pendingCount !== null) setTotalPendingUsers(pendingCount);
 
       } catch (err) {
         console.error("Error pulling administration quick stats:", err);
@@ -61,14 +69,14 @@ export default function AdministrationDashboardHub() {
             Admin <span className="text-blue-600">Workspace</span>
           </h1>
           <p className="text-slate-500 text-xs sm:text-sm mt-2 max-w-sm mx-auto px-2">
-            Welcome back! Select a workspace module below to manage church administration and logistics operations.
+            Welcome back! Select a workspace module below to manage church administration, logistics, and personnel security options.
           </p>
         </div>
 
-        {/* Navigation Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-5 max-w-3xl mx-auto">
+        {/* Navigation Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5 max-w-5xl mx-auto">
 
-          {/* Events Card */}
+          {/* Module 1: Events Card */}
           <button
             onClick={() => navigate("/ministries/administration/event")}
             className="bg-white/80 backdrop-blur border border-slate-200 rounded-xl p-5 sm:p-6 text-left hover:shadow-md hover:-translate-y-1 transition-all duration-300 group active:scale-[0.98]"
@@ -87,7 +95,7 @@ export default function AdministrationDashboardHub() {
             </span>
           </button>
 
-          {/* Tasks Card */}
+          {/* Module 2: Tasks Card */}
           <button
             onClick={() => navigate("/ministries/administration/task")}
             className="bg-white/80 backdrop-blur border border-slate-200 rounded-xl p-5 sm:p-6 text-left hover:shadow-md hover:-translate-y-1 transition-all duration-300 group active:scale-[0.98]"
@@ -103,6 +111,29 @@ export default function AdministrationDashboardHub() {
             </p>
             <span className="text-[10px] sm:text-xs font-semibold text-emerald-600 bg-emerald-50 inline-block px-2.5 py-1 rounded-md">
               {loading ? "Counting..." : `${totalTasks} Active Tasks`}
+            </span>
+          </button>
+
+          {/* Module 3: Account Management Card */}
+          <button
+            onClick={() => navigate("/ministries/administration/accounts")}
+            className="bg-white/80 backdrop-blur border border-slate-200 rounded-xl p-5 sm:p-6 text-left hover:shadow-md hover:-translate-y-1 transition-all duration-300 group active:scale-[0.98] sm:col-span-2 lg:col-span-1"
+          >
+            <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-lg mb-4 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+              <FaUserShield />
+            </div>
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 mb-1">
+              Account Gatekeeper
+            </h2>
+            <p className="text-slate-500 text-xs sm:text-sm leading-relaxed mb-3">
+              Review incoming profile logs, grant role access clearance parameters (Admin/Editor/Viewer), and approve secure registration fields.
+            </p>
+            <span className={`text-[10px] sm:text-xs font-semibold inline-block px-2.5 py-1 rounded-md ${
+              totalPendingUsers > 0 
+                ? "bg-amber-50 text-amber-600 font-bold border border-amber-100 animate-pulse" 
+                : "bg-indigo-50 text-indigo-600"
+            }`}>
+              {loading ? "Counting..." : `${totalPendingUsers} Pending Requests`}
             </span>
           </button>
 

@@ -2,29 +2,29 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  LineChart, Line, LabelList // 💡 Imported LabelList for data value renderings
+  LineChart, Line, LabelList 
 } from "recharts";
 import { 
-  FaHome, FaChartBar, FaChartLine, FaFilter, FaSpinner, FaUsers, FaCheckCircle 
+  FaHome, FaChartBar, FaChartLine, FaFilter, FaSpinner, FaUsers, FaCheckCircle, FaStar, FaUserClock 
 } from "react-icons/fa";
 import { supabase } from "../../../Services/supabase";
 
-// Constant array for sorting and mapping calendar months
 const MONTHS = [
-  "January", "February", "March", "April", "May", "June", 
-  "July", "August", "September", "October", "November", "December"
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ];
+
+const ROLE_OPTIONS = ["Member", "Minister", "Visitor", "1st Timer", "2nd Timer"];
 
 export default function UsherAttendanceDashboard() {
   const [loading, setLoading] = useState(true);
   const [rawAttendance, setRawAttendance] = useState([]);
   
-  // Filter states
-  const [viewType, setViewType] = useState("All"); // "All" | "Per Tribe" | "Per Service"
+  const [viewType, setViewType] = useState("All"); 
   const [selectedTribe, setSelectedTribe] = useState("All");
   const [selectedService, setSelectedService] = useState("All");
+  const [selectedRole, setSelectedRole] = useState("All");
 
-  // Dynamically populated unique lists from DB rows
   const [tribesList, setTribesList] = useState([]);
   const [servicesList, setServicesList] = useState([]);
 
@@ -32,17 +32,31 @@ export default function UsherAttendanceDashboard() {
     async function fetchDashboardData() {
       try {
         setLoading(true);
-        // Pulling core metrics needed for monthly aggregations
         const { data, error } = await supabase
           .from("usher_attendance")
           .select("date, name, tribe, service, status");
 
         if (error) throw error;
 
-        const records = data || [];
+        const { data: roster, error: rosterErr } = await supabase
+          .from("usher_members")
+          .select("first_name, last_name, role");
+
+        if (rosterErr) throw rosterErr;
+
+        const roleByName = {};
+        (roster || []).forEach(m => {
+          const fullName = `${m.first_name || ""} ${m.last_name || ""}`.trim().toLowerCase();
+          if (fullName) roleByName[fullName] = m.role || "Unspecified";
+        });
+
+        const records = (data || []).map(r => {
+          const normalizedName = (r.name || "").trim().toLowerCase();
+          return { ...r, role: roleByName[normalizedName] || "Unspecified" };
+        });
+
         setRawAttendance(records);
 
-        // Extract unique Tribes and Services for dropdown menus
         const uniqueTribes = [...new Set(records.map(r => r.tribe || "N/A"))].filter(Boolean);
         const uniqueServices = [...new Set(records.map(r => r.service || "Regular Service"))].filter(Boolean);
         
@@ -57,19 +71,14 @@ export default function UsherAttendanceDashboard() {
     fetchDashboardData();
   }, []);
 
-  // Process data for charts based on selected filters
   const generateChartData = () => {
-    // 1. Initialize empty structural map for January - December
     const monthlyMap = MONTHS.reduce((acc, month) => {
       acc[month] = { month, Present: 0, Absent: 0 };
-      // If broken down by sub-categories, we dynamically track them inside each month
       return acc;
     }, {});
 
-    // 2. Track all unique categories found globally to use as Bar/Line data keys
     const dynamicKeys = new Set();
 
-    // 3. Filter and aggregate raw entries
     rawAttendance.forEach(record => {
       if (!record.date) return;
       
@@ -80,31 +89,41 @@ export default function UsherAttendanceDashboard() {
       const status = record.status === "Present" ? "Present" : "Absent";
       const tribe = record.tribe || "N/A";
       const service = record.service || "Regular Service";
+      const role = record.role || "Unspecified";
 
-      // Apply the interactive filter layout controls
       if (viewType === "All") {
         if (selectedTribe !== "All" && tribe !== selectedTribe) return;
         if (selectedService !== "All" && service !== selectedService) return;
+        if (selectedRole !== "All" && role !== selectedRole) return;
         
         monthlyMap[monthName][status] += 1;
       } 
       else if (viewType === "Per Tribe") {
         if (selectedService !== "All" && service !== selectedService) return;
-        if (status === "Present") { // Charting trends for present members per category
+        if (selectedRole !== "All" && role !== selectedRole) return;
+        if (status === "Present") { 
           dynamicKeys.add(tribe);
           monthlyMap[monthName][tribe] = (monthlyMap[monthName][tribe] || 0) + 1;
         }
       } 
       else if (viewType === "Per Service") {
         if (selectedTribe !== "All" && tribe !== selectedTribe) return;
+        if (selectedRole !== "All" && role !== selectedRole) return;
         if (status === "Present") {
           dynamicKeys.add(service);
           monthlyMap[monthName][service] = (monthlyMap[monthName][service] || 0) + 1;
         }
       }
+      else if (viewType === "Per Role") {
+        if (selectedTribe !== "All" && tribe !== selectedTribe) return;
+        if (selectedService !== "All" && service !== selectedService) return;
+        if (status === "Present") {
+          dynamicKeys.add(role);
+          monthlyMap[monthName][role] = (monthlyMap[monthName][role] || 0) + 1;
+        }
+      }
     });
 
-    // Convert map object back to an ordered array matching sequential calendar flow
     return {
       chartData: MONTHS.map(m => monthlyMap[m]),
       keys: Array.from(dynamicKeys)
@@ -112,78 +131,89 @@ export default function UsherAttendanceDashboard() {
   };
 
   const { chartData, keys } = generateChartData();
+  const colors = ["#ec4899", "#2563eb", "#64748b", "#f97316", "#10b981", "#f59e0b", "#06b6d4", "#8b5cf6"];
 
-  // Color Palette Array for Dynamic Segmenting
-  const colors = ["#2563eb", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4", "#f97316", "#64748b"];
-
-  // Quick summary card computations
   const totalPresentCount = rawAttendance.filter(r => r.status === "Present").length;
   const totalRecordsCount = rawAttendance.length;
+  const firstTimerPresentCount = rawAttendance.filter(r => r.status === "Present" && r.role === "1st Timer").length;
+  const secondTimerPresentCount = rawAttendance.filter(r => r.status === "Present" && r.role === "2nd Timer").length;
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-12">
-      {/* Navigation Header bar */}
-      <div className="fixed top-4 left-4 z-50">
-        <Link
-          to="/ministries/usher"
-          className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-2 rounded-xl text-sm font-medium text-slate-700 hover:text-blue-600 transition-colors shadow-sm"
-        >
-          <FaHome />
-          Back
-        </Link>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-4 pt-16 md:pt-20">
-        {/* Title Heading */}
-        <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center text-xl mx-auto mb-3">
-            📊
-          </div>
-          <h1 className="text-3xl md:text-5xl font-black tracking-tight">
-            Attendance <span className="text-blue-600">Analytics</span>
-          </h1>
-          <p className="text-slate-500 text-xs md:text-sm mt-2">
-            January - December Historical Trends Dashboard
-          </p>
-        </div>
-
-        {/* Global Summary Metric Snippets */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          <div className="bg-white border border-slate-100 rounded-xl p-4 flex items-center gap-4 shadow-sm">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-lg"><FaUsers className="text-xl"/></div>
+    /* 💡 Container uses natural block layout with flex-col. No absolute vertical centering, prevents top-cutoffs */
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-8 overflow-x-hidden flex flex-col items-center pt-4 md:pt-6 px-3 sm:px-6 box-border">
+      
+      {/* 💡 Expanded max-width up to 1400px so it's not a compact column on desktop */}
+      <div className="w-full max-w-[1400px] flex flex-col gap-4 md:gap-5">
+        
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 md:gap-4">
+            <Link
+              to="/ministries/usher"
+              className="flex items-center justify-center bg-white border border-slate-200 w-10 h-10 md:w-12 md:h-12 rounded-xl text-slate-600 hover:text-blue-600 hover:shadow-sm transition-all"
+              title="Go Back"
+            >
+              <FaHome size={18} />
+            </Link>
             <div>
-              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Headcount Logs</p>
-              <p className="text-2xl font-black text-slate-800">{totalRecordsCount}</p>
-            </div>
-          </div>
-          <div className="bg-white border border-slate-100 rounded-xl p-4 flex items-center gap-4 shadow-sm">
-            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg"><FaCheckCircle className="text-xl"/></div>
-            <div>
-              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Confirmed Present</p>
-              <p className="text-2xl font-black text-emerald-600">{totalPresentCount}</p>
+              <h1 className="text-2xl md:text-4xl font-black tracking-tight text-slate-800 leading-none">
+                Attendance <span className="text-blue-600">Overview</span>
+              </h1>
             </div>
           </div>
         </div>
 
-        {/* Interactive Filtering Configuration Dashboard Container */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm mb-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Summary Cards with LARGER NUMBERS */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
+          <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-5 flex items-center gap-4 shadow-sm">
+            <div className="p-3 md:p-4 bg-blue-50 text-blue-600 rounded-xl hidden sm:block"><FaUsers size={24}/></div>
+            <div>
+              <p className="text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1">Total Records</p>
+              <p className="text-3xl md:text-5xl font-black text-slate-800 leading-none">{totalRecordsCount}</p>
+            </div>
+          </div>
+          
+          <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-5 flex items-center gap-4 shadow-sm">
+            <div className="p-3 md:p-4 bg-emerald-50 text-emerald-600 rounded-xl hidden sm:block"><FaCheckCircle size={24}/></div>
+            <div>
+              <p className="text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1">Present</p>
+              <p className="text-3xl md:text-5xl font-black text-emerald-600 leading-none">{totalPresentCount}</p>
+            </div>
+          </div>
+          
+          <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-5 flex items-center gap-4 shadow-sm">
+            <div className="p-3 md:p-4 bg-amber-50 text-amber-500 rounded-xl hidden sm:block"><FaStar size={24}/></div>
+            <div>
+              <p className="text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1">1st Timers</p>
+              <p className="text-3xl md:text-5xl font-black text-amber-500 leading-none">{firstTimerPresentCount}</p>
+            </div>
+          </div>
+          
+          <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-5 flex items-center gap-4 shadow-sm">
+            <div className="p-3 md:p-4 bg-purple-50 text-purple-600 rounded-xl hidden sm:block"><FaUserClock size={24}/></div>
+            <div>
+              <p className="text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1">2nd Timers</p>
+              <p className="text-3xl md:text-5xl font-black text-purple-600 leading-none">{secondTimerPresentCount}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Filter Bar */}
+        <div className="sticky top-0 z-40 bg-[#f8fafc]/95 backdrop-blur-sm py-1">
+          <div className="bg-white border border-slate-200 rounded-xl p-3 md:p-4 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4">
             
-            {/* Main Toggle Segment Options */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
-                <FaFilter className="text-blue-500 text-[10px]"/> Breakdown Mode
-              </label>
-              <div className="bg-slate-100 p-1 rounded-xl flex gap-1 self-start">
-                {["All", "Per Tribe", "Per Service"].map((mode) => (
+            <div className="flex items-center gap-3 w-full xl:w-auto overflow-x-auto">
+              <FaFilter className="text-blue-500 text-sm flex-shrink-0 hidden md:block"/>
+              <div className="bg-slate-100/80 p-1.5 rounded-lg flex gap-1.5 w-full md:w-auto min-w-max">
+                {["All", "Per Tribe", "Per Service", "Per Role"].map((mode) => (
                   <button
                     key={mode}
                     type="button"
                     onClick={() => setViewType(mode)}
-                    className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    className={`px-4 py-2 md:px-5 md:py-2.5 text-xs md:text-sm font-bold rounded-md transition-all whitespace-nowrap flex-1 text-center ${
                       viewType === mode
-                        ? "bg-white text-blue-600 shadow-sm"
-                        : "text-slate-600 hover:text-slate-900"
+                        ? "bg-white text-blue-600 shadow-sm border border-slate-200/50"
+                        : "text-slate-500 hover:text-slate-800"
                     }`}
                   >
                     {mode}
@@ -192,84 +222,77 @@ export default function UsherAttendanceDashboard() {
               </div>
             </div>
 
-            {/* Sub Filter Dropdowns Contextual States */}
-            <div className="flex flex-wrap gap-3">
-              {viewType !== "Per Tribe" && (
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Filter Tribe</label>
-                  <select
-                    value={selectedTribe}
-                    onChange={(e) => setSelectedTribe(e.target.value)}
-                    className="bg-slate-50 border border-slate-200 text-xs font-bold rounded-lg px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    <option value="All">All Tribes</option>
-                    {tribesList.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-              )}
+            {/* 💡 Mobile Grid fix: grid-cols-1 on small screens so they stack safely, sm:grid-cols-3 for desktop/tablet */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full xl:w-auto">
+              <select
+                disabled={viewType === "Per Tribe"}
+                value={selectedTribe}
+                onChange={(e) => setSelectedTribe(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 text-xs md:text-sm font-semibold rounded-lg px-3 py-2.5 md:py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 appearance-none cursor-pointer"
+              >
+                <option value="All">All Tribes</option>
+                {tribesList.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
 
-              {viewType !== "Per Service" && (
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Filter Service</label>
-                  <select
-                    value={selectedService}
-                    onChange={(e) => setSelectedService(e.target.value)}
-                    className="bg-slate-50 border border-slate-200 text-xs font-bold rounded-lg px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    <option value="All">All Services</option>
-                    {servicesList.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-              )}
+              <select
+                disabled={viewType === "Per Service"}
+                value={selectedService}
+                onChange={(e) => setSelectedService(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 text-xs md:text-sm font-semibold rounded-lg px-3 py-2.5 md:py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 appearance-none cursor-pointer"
+              >
+                <option value="All">All Services</option>
+                {servicesList.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+
+              <select
+                disabled={viewType === "Per Role"}
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 text-xs md:text-sm font-semibold rounded-lg px-3 py-2.5 md:py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 appearance-none cursor-pointer"
+              >
+                <option value="All">All Roles</option>
+                {ROLE_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
             </div>
-
           </div>
         </div>
 
         {loading ? (
-          <div className="bg-white border border-slate-100 rounded-xl p-12 text-center flex flex-col items-center justify-center min-h-[350px]">
-            <FaSpinner className="animate-spin text-blue-600 text-2xl mb-2" />
-            <p className="text-slate-400 text-sm font-medium">Aggregating records graph...</p>
+          <div className="bg-white border border-slate-200 rounded-xl p-8 text-center flex flex-col items-center justify-center h-[350px] shadow-sm">
+            <FaSpinner className="animate-spin text-blue-500 text-3xl md:text-4xl mb-4" />
+            <p className="text-slate-500 text-sm font-medium">Loading your dashboard data...</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
             
-            {/* 1. BAR CHART CONTAINER */}
-            <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm">
-              <h2 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2 border-b border-slate-50 pb-2">
-                <FaChartBar className="text-blue-500" /> Monthly Volume Distribution
+            {/* BAR CHART */}
+            <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-6 shadow-sm flex flex-col">
+              <h2 className="text-base md:text-lg font-bold text-slate-800 flex items-center gap-2 mb-4 md:mb-6">
+                <FaChartBar className="text-blue-500" /> Monthly Headcount
               </h2>
-              <div className="w-full h-80 text-xs font-medium">
+              {/* 💡 Slightly taller charts on desktop (md:h-[320px]) so labels aren't squished */}
+              <div className="w-full h-[260px] md:h-[320px] text-xs font-medium flex-grow">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="month" stroke="#94a3b8" tickLine={false} />
-                    <YAxis stroke="#94a3b8" tickLine={false} />
-                    <Tooltip cursor={{ fill: '#f8fafc' }} />
-                    <Legend verticalAlign="top" height={36} iconType="circle" />
+                  <BarChart data={chartData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="month" stroke="#64748b" tickLine={false} axisLine={false} tick={{fill: '#64748b', fontWeight: 600, fontSize: 12}} dy={10} />
+                    <YAxis stroke="#64748b" tickLine={false} axisLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
+                    <Tooltip cursor={{ fill: '#f1f5f9', opacity: 0.4 }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px rgb(0 0 0 / 0.1)', fontSize: '13px', padding: '12px' }} />
+                    <Legend verticalAlign="top" height={40} iconType="circle" wrapperStyle={{ fontSize: '13px', fontWeight: '600', color: '#475569' }} />
                     
                     {viewType === "All" ? (
                       <>
-                        <Bar dataKey="Present" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={30}>
-                          {/* 💡 Added labels inside/above bars, hides rendering if the month's total value is 0 */}
-                          <LabelList dataKey="Present" position="top" fill="#475569" formatter={(val) => val > 0 ? val : ""} style={{ fontSize: '10px', fontWeight: 'bold' }} />
+                        <Bar dataKey="Present" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={50}>
+                          <LabelList dataKey="Present" position="top" fill="#475569" formatter={(val) => val > 0 ? val : ""} style={{ fontSize: '12px', fontWeight: 'bold' }} />
                         </Bar>
-                        <Bar dataKey="Absent" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={30}>
-                          <LabelList dataKey="Absent" position="top" fill="#475569" formatter={(val) => val > 0 ? val : ""} style={{ fontSize: '10px', fontWeight: 'bold' }} />
+                        <Bar dataKey="Absent" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={50}>
+                          <LabelList dataKey="Absent" position="top" fill="#475569" formatter={(val) => val > 0 ? val : ""} style={{ fontSize: '12px', fontWeight: 'bold' }} />
                         </Bar>
                       </>
                     ) : (
                       keys.map((key, index) => (
-                        <Bar 
-                          key={key} 
-                          dataKey={key} 
-                          fill={colors[index % colors.length]} 
-                          name={key}
-                          radius={[4, 4, 0, 0]}
-                          stackId="a"
-                        >
-                          {/* 💡 Stacked view labels appear inside sections natively when positioned "center" */}
-                          <LabelList dataKey={key} position="center" fill="#ffffff" formatter={(val) => val > 0 ? val : ""} style={{ fontSize: '10px', fontWeight: 'bold' }} />
+                        <Bar key={key} dataKey={key} fill={colors[index % colors.length]} name={key} radius={[2, 2, 0, 0]} stackId="a" maxBarSize={60}>
+                          <LabelList dataKey={key} position="center" fill="#ffffff" formatter={(val) => val > 0 ? val : ""} style={{ fontSize: '12px', fontWeight: '900', textShadow: '0px 1px 2px rgba(0,0,0,0.5)' }} />
                         </Bar>
                       ))
                     )}
@@ -278,42 +301,33 @@ export default function UsherAttendanceDashboard() {
               </div>
             </div>
 
-            {/* 2. LINE CHART CONTAINER */}
-            <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm">
-              <h2 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2 border-b border-slate-50 pb-2">
-                <FaChartLine className="text-blue-500" /> Attendance Trajectory Timeline
+            {/* LINE CHART */}
+            <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-6 shadow-sm flex flex-col">
+              <h2 className="text-base md:text-lg font-bold text-slate-800 flex items-center gap-2 mb-4 md:mb-6">
+                <FaChartLine className="text-blue-500" /> Trends Over Time
               </h2>
-              <div className="w-full h-80 text-xs font-medium">
+              <div className="w-full h-[260px] md:h-[320px] text-xs font-medium flex-grow">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="month" stroke="#94a3b8" tickLine={false} />
-                    <YAxis stroke="#94a3b8" tickLine={false} />
-                    <Tooltip />
-                    <Legend verticalAlign="top" height={36} iconType="circle" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="month" stroke="#64748b" tickLine={false} axisLine={false} tick={{fill: '#64748b', fontWeight: 600, fontSize: 12}} dy={10} />
+                    <YAxis stroke="#64748b" tickLine={false} axisLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px rgb(0 0 0 / 0.1)', fontSize: '13px', padding: '12px' }} />
+                    <Legend verticalAlign="top" height={40} iconType="circle" wrapperStyle={{ fontSize: '13px', fontWeight: '600', color: '#475569' }} />
                     
                     {viewType === "All" ? (
                       <>
-                        <Line type="monotone" dataKey="Present" stroke="#10b981" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }}>
-                          {/* 💡 Places numerical metrics hovering right above trend data points */}
-                          <LabelList dataKey="Present" position="top" fill="#047857" formatter={(val) => val > 0 ? val : ""} style={{ fontSize: '10px', fontWeight: 'bold' }} />
+                        <Line type="monotone" dataKey="Present" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }}>
+                          <LabelList dataKey="Present" position="top" fill="#047857" formatter={(val) => val > 0 ? val : ""} style={{ fontSize: '12px', fontWeight: 'bold' }} dy={-6} />
                         </Line>
-                        <Line type="monotone" dataKey="Absent" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="4 4" dot={{ r: 3 }}>
-                          <LabelList dataKey="Absent" position="top" fill="#b91c1c" formatter={(val) => val > 0 ? val : ""} style={{ fontSize: '10px' }} />
+                        <Line type="monotone" dataKey="Absent" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={{ r: 3 }}>
+                          <LabelList dataKey="Absent" position="bottom" fill="#b91c1c" formatter={(val) => val > 0 ? val : ""} style={{ fontSize: '12px', fontWeight: 'bold' }} dy={6} />
                         </Line>
                       </>
                     ) : (
                       keys.map((key, index) => (
-                        <Line 
-                          key={key} 
-                          type="monotone"
-                          dataKey={key} 
-                          stroke={colors[index % colors.length]} 
-                          name={key}
-                          strokeWidth={2.5}
-                          dot={{ r: 3 }}
-                        >
-                          <LabelList dataKey={key} position="top" fill={colors[index % colors.length]} formatter={(val) => val > 0 ? val : ""} style={{ fontSize: '10px', fontWeight: 'bold' }} />
+                        <Line key={key} type="monotone" dataKey={key} stroke={colors[index % colors.length]} name={key} strokeWidth={3} dot={{ r: 4 }}>
+                          <LabelList dataKey={key} position="top" fill={colors[index % colors.length]} formatter={(val) => val > 0 ? val : ""} style={{ fontSize: '12px', fontWeight: '900' }} dy={-4} />
                         </Line>
                       ))
                     )}
@@ -328,3 +342,4 @@ export default function UsherAttendanceDashboard() {
     </div>
   );
 }
+

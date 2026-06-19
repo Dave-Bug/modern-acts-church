@@ -6,6 +6,7 @@ import DiscipleshipJourney from "./component/ministries/DiscipleshipJourney/Disc
 
 import Administration from "./component/ministries/Admin/Administration";
 import AdminTask from "./component/ministries/Admin/AdminTask";
+import AdminAccount from "./component/ministries/Admin/AdminAccount";
 import AdminEvent from "./component/ministries/Admin/AdminEvent";
 
 import Finance from "./component/ministries/Finance/FinanceLedger";
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="/ministries/administration" element={<Administration />} />
         <Route path="/ministries/administration/task" element={<AdminTask />} />
         <Route path="/ministries/administration/event" element={<AdminEvent />} />
+        <Route path = "/ministries/administration/accounts" element={<AdminAccount />} />
 
         <Route path="/ministries/finance" element={<Finance />} />
         <Route path="/ministries/finance/tithes" element={<FinanceThites />} />
@@ -45,7 +47,7 @@ export default function App() {
         <Route path="/ministries/finance/pledge" element={<FinancePledge />} />
         <Route path="/ministries/finance/expenses" element={<FinanceExpenses />} />
         <Route path="/ministries/finance/total-income" element={<FinanceTotalIncome />} />
-          <Route path="/ministries/finance/total-transaction" element={<FinanceTotalTransaction />} />
+        <Route path="/ministries/finance/total-transaction" element={<FinanceTotalTransaction />} />
 
         <Route path="/ministries/usher" element={<Usher />} />
         <Route path="/ministries/usher/ushermember" element={<UsherMembers />} />

@@ -1,26 +1,25 @@
 import { useState } from "react";
 import { Link } from "react-router-dom"; 
 import { 
-  FaUsers, FaCross, FaWater, FaGraduationCap, 
+  FaUsers, FaCheckCircle, FaBook, 
   FaChevronLeft, FaChevronRight, FaBars, FaTimes,
   FaHome 
 } from "react-icons/fa";
-import Consolidation from "./Pages/Consolidation"; 
-import SoulWinning from "./Pages/SoulWinning"; 
-import Soaking from "./Pages/Soaking";
-import Schooling from "./Pages/Schooling";
+import Process from "./Pages/Process"; 
+import Devotion from "./Devotion"; // Make sure this path is correct!
+import Lifegroup from "./Lifegroup";
 
 export default function DiscipleshipJourney() {
   // Navigation & UI States
-  const [currentMenu, setCurrentMenu] = useState("Consolidation"); 
+  const [currentMenu, setCurrentMenu] = useState("Process"); 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
+  // Updated to the Main Categories
   const navigationItems = [
-    { name: "Consolidation", icon: FaUsers, color: "text-blue-600" },
-    { name: "Soul Winning", icon: FaCross, color: "text-red-500" },
-    { name: "Soaking", icon: FaWater, color: "text-cyan-500" },
-    { name: "Schooling", icon: FaGraduationCap, color: "text-indigo-500" },
+    { name: "Process", icon: FaCheckCircle, color: "text-green-500" },
+    { name: "Devotion", icon: FaBook, color: "text-amber-500" },
+    { name: "Lifegroup", icon: FaUsers, color: "text-purple-500" },
   ];
 
   return (
@@ -49,7 +48,7 @@ export default function DiscipleshipJourney() {
           </button>
         </div>
 
-        {/* Desktop Sidebar Integrated Utility Context Actions Layer */}
+        {/* Desktop Sidebar Back Button */}
         <div className="p-3 border-b border-slate-800/60">
           <Link
             to="/ministries"
@@ -62,7 +61,7 @@ export default function DiscipleshipJourney() {
           </Link>
         </div>
 
-        {/* Dynamic Navigation Map Link Stack */}
+        {/* Dynamic Navigation Map */}
         <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
           {navigationItems.map((item) => {
             const Icon = item.icon;
@@ -78,7 +77,7 @@ export default function DiscipleshipJourney() {
                 }`}
               >
                 <Icon className={`text-base shrink-0 ${isSelected ? "text-white" : item.color} ${sidebarCollapsed ? "mx-auto" : "mr-3"}`} />
-                {!sidebarCollapsed && <span>{item.name}</span>}
+                {!sidebarCollapsed && <span>{item.name} Checking</span>}
               </button>
             );
           })}
@@ -96,7 +95,7 @@ export default function DiscipleshipJourney() {
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <span className="text-xs font-black uppercase tracking-widest text-slate-400">Navigation Pipeline</span>
+              <span className="text-xs font-black uppercase tracking-widest text-slate-400">Navigation</span>
               <button 
                 onClick={() => setMobileSidebarOpen(false)} 
                 className="text-slate-400 hover:text-white p-1 text-sm cursor-pointer"
@@ -117,7 +116,7 @@ export default function DiscipleshipJourney() {
                     }`}
                   >
                     <Icon className={`text-base mr-3 shrink-0 ${isSelected ? "text-white" : item.color}`} />
-                    {item.name}
+                    {item.name} Checking
                   </button>
                 );
               })}
@@ -132,7 +131,7 @@ export default function DiscipleshipJourney() {
         {/* Top Header Panel View */}
         <header className="h-16 bg-white border-b border-slate-200 shrink-0 px-4 flex items-center justify-between gap-4 sticky top-0 z-20">
           
-          {/* Mobile Back Button & Toggle controls grouped cleanly on left side */}
+          {/* Mobile Back Button & Drawer Toggle */}
           <div className="flex items-center gap-2 md:hidden">
             <Link
               to="/ministries"
@@ -149,36 +148,25 @@ export default function DiscipleshipJourney() {
             </button>
           </div>
           
-          {/* Mobile Display Route Breadcrumbs Header */}
+          {/* Context Header */}
           <div className="text-right ml-auto md:block">
             <span className="text-[10px] font-bold text-slate-400 tracking-wider uppercase block">Active Track</span>
-            <span className="text-xs font-black text-slate-800">{currentMenu}</span>
+            <span className="text-xs font-black text-slate-800">{currentMenu} Checking</span>
           </div>
         </header>
 
         {/* Dynamic Inner Container Content Loader */}
         <div className="p-4 xl:px-32 max-w-full w-full mx-auto flex-1 overflow-y-auto min-h-0">
-          {currentMenu === "Consolidation" ? (
-              <Consolidation />
-          ) : currentMenu === "Soul Winning" ? (
-              <SoulWinning />
-          ) : currentMenu === "Soaking" ? (
-              <Soaking />
-          ) : currentMenu === "Schooling" ? (
-              <Schooling />
-          ) : (
-              <div className="bg-white border border-slate-200 rounded-2xl p-8 sm:p-12 text-center max-w-xl mx-auto mt-6 sm:mt-12 shadow-xs">
-                <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg mx-auto mb-4 font-black">⚙️</div>
-                <h2 className="text-sm sm:text-base font-black text-slate-900 mb-1">{currentMenu} Submodule Pipeline</h2>
-                <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                    This tracking layout is reserved. Complete your foundational entries inside Soaking to prepare profiles for this milestone stage.
-                </p>
-              </div>
-          )}
+          {currentMenu === "Process" ? (
+              <Process />
+          ) : currentMenu === "Devotion" ? (
+              <Devotion />
+          ) : currentMenu === "Lifegroup" ? (
+              <Lifegroup />
+          ) : null}
         </div>
       </main>
 
     </div>
   );
 }
-

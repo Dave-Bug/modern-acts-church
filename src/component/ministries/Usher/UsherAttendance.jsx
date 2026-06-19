@@ -245,7 +245,10 @@ export default function UsherAttendance() {
       setSaving(true);
       const activeService = getServiceName(selectedDate);
       
-      const payload = members.map(member => {
+      // Use a Map to automatically deduplicate by fullName
+      const uniquePayloadMap = new Map();
+
+      members.forEach(member => {
         const fullName = `${member.first_name} ${member.last_name || ""}`.trim();
         
         let finalTribe = member.tribe || "N/A";
@@ -259,15 +262,21 @@ export default function UsherAttendance() {
           }
         }
 
-        return {
+        // Setting the item in the Map using fullName as the key.
+        // If a duplicate name exists, this will just overwrite it,
+        // guaranteeing a unique array for the upsert payload.
+        uniquePayloadMap.set(fullName, {
           name: fullName,
           date: selectedDate,
           tribe: finalTribe,
           invited_by: member.invited_by || "",
           status: attendance[member.id] || "Absent",
           service: activeService
-        };
+        });
       });
+
+      // Convert the Map values back to an array
+      const payload = Array.from(uniquePayloadMap.values());
 
       if (payload.length > 0) {
         const { error } = await supabase
@@ -345,7 +354,14 @@ export default function UsherAttendance() {
     let matchesCriteria = true;
     if (primaryFilter === "Minister") {
       matchesCriteria = (member.role || "").toLowerCase() === "minister";
-    } else if (primaryFilter === "Visitor") {
+    } 
+    else if (primaryFilter === "1st Timer") {
+      matchesCriteria = (member.role || "").toLowerCase() === "1st timer";
+    }
+    else if (primaryFilter === "2nd Timer") {
+      matchesCriteria = (member.role || "").toLowerCase() === "2nd timer";
+    }
+    else if (primaryFilter === "Visitor") {
       matchesCriteria = (member.role || "").toLowerCase() === "visitor";
     } else if (primaryFilter === "Member") { 
       matchesCriteria = (member.role || "").toLowerCase() === "member";
@@ -467,6 +483,8 @@ export default function UsherAttendance() {
                 <option value="Minister">Ministers</option>
                 <option value="Member">Members</option>
                 <option value="Visitor">Visitors</option>
+                <option value="1st Timer">1st Timer</option>
+                <option value="2nd Timer">2nd Timer</option>
               </select>
             </div>
 
@@ -543,7 +561,7 @@ export default function UsherAttendance() {
                 <div className="w-full bg-slate-50 border border-slate-100 p-2.5 rounded-lg flex items-center gap-3">
                   <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Select Database Role:</label>
                   <div className="flex gap-2">
-                    {["Visitor", "Member", "Minister"].map((roleOption) => (
+                    {["Visitor", "Member", "Minister", "1st Timer", "2nd Timer"].map((roleOption) => (
                       <button
                         key={roleOption}
                         type="button"
@@ -632,7 +650,7 @@ export default function UsherAttendance() {
                     onClick={() => { 
                       setShowAddVisitor(false); 
                       setVisitorText(""); 
-                      setInsertRole("Visitor"); 
+                      setInsertRole("1st Timer"); 
                       setShowInviterDropdown(false);
                     }}
                     className="bg-slate-100 text-slate-600 font-bold rounded-lg text-[11px] py-1.5 px-3"
@@ -679,7 +697,7 @@ export default function UsherAttendance() {
                       </p>
                       {member.invited_by && (
                         <span className="inline-block text-[9px] bg-orange-50 text-orange-600 font-bold px-1.5 py-0.5 rounded border border-orange-100 mt-0.5 max-w-full truncate">
-                          {member.role || "Visitor"} {`• via ${member.invited_by}`}
+                          {member.role || "1st Timer"} {`• via ${member.invited_by}`}
                         </span>
                       )}
                     </div>
