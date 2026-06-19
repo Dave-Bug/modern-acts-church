@@ -607,7 +607,7 @@ export default function Offering() {
                       onClick={() => setSaveMode("overwrite")}
                       className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
                         saveMode === "overwrite"
-                          ? "bg-blue-600 text-white"
+                          ? "bg-blue-600 text-emerald-500"
                           : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
                       }`}
                     >
@@ -618,7 +618,7 @@ export default function Offering() {
                       onClick={() => setSaveMode("add")}
                       className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
                         saveMode === "add"
-                          ? "bg-emerald-600 text-white"
+                          ? "bg-emerald-600 text-emerald-500"
                           : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
                       }`}
                     >

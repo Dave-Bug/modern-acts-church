@@ -11,7 +11,7 @@ import {
   FaTimes, 
   FaFileDownload, 
   FaEye,
-  FaArrowUp // 💡 Added Arrow Icon
+  FaArrowUp
 } from "react-icons/fa";
 import { supabase } from "../../../Services/supabase";
 
@@ -24,14 +24,15 @@ export default function UsherAttendance() {
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [insertRole, setInsertRole] = useState("Visitor"); 
-  const [showScrollTop, setShowScrollTop] = useState(false); // 💡 State to toggle visibility
-  
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
   // Advanced Filter States
   const [primaryFilter, setPrimaryFilter] = useState("All"); 
   const [selectedTribe, setSelectedTribe] = useState(""); 
-  
+
   const [showAddVisitor, setShowAddVisitor] = useState(false);
-  const [showCheckedModal, setShowCheckedModal] = useState(false); 
+  const [showCheckedModal, setShowCheckedModal] = useState(false);
+  const [modalTab, setModalTab] = useState("present"); // "present" | "absent"
   const [visitorText, setVisitorText] = useState(""); 
   const [invitedBy, setInvitedBy] = useState(""); 
 
@@ -39,43 +40,33 @@ export default function UsherAttendance() {
     if (!dateString) return "Regular Service";
     const dateParts = dateString.split("-");
     if (dateParts.length !== 3) return "Regular Service";
-    
+
     const dateObj = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
     const dayIndex = dateObj.getDay(); 
-    
+
     if (dayIndex === 3) return "Prayer Works";
     if (dayIndex === 6) return "Y.A Service";
     if (dayIndex === 0) return "Sunday Service";
     return "Regular Service";
   };
 
-  // 💡 Monitor page scroll positioning to toggle button visibility
   useEffect(() => {
     const handleScrollVisibility = () => {
-      if (window.scrollY > 300) {
-        setShowScrollTop(true);
-      } else {
-        setShowScrollTop(false);
-      }
+      setShowScrollTop(window.scrollY > 300);
     };
-
     window.addEventListener("scroll", handleScrollVisibility);
     return () => window.removeEventListener("scroll", handleScrollVisibility);
   }, []);
 
-  // 💡 Smoothly snap user back to the top of the interface
   const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth"
-    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   useEffect(() => {
     async function initializeModule() {
       try {
         setLoading(true);
-        
+
         const { data: roster, error: rosterErr } = await supabase
           .from("usher_members")
           .select("id, first_name, last_name, role, tribe")
@@ -93,7 +84,7 @@ export default function UsherAttendance() {
         const existingRecords = attendanceRecords || [];
 
         const stateMap = {};
-        
+
         baseRoster.forEach(m => {
           const fullName = `${m.first_name} ${m.last_name || ""}`.trim();
           const match = existingRecords.find(r => r.name.toLowerCase() === fullName.toLowerCase());
@@ -121,7 +112,7 @@ export default function UsherAttendance() {
               tribe: record.tribe || "N/A",
               invited_by: record.invited_by || ""
             });
-            
+
             stateMap[tempId] = record.status;
           }
         });
@@ -158,12 +149,12 @@ export default function UsherAttendance() {
 
     const payloadToInsert = [];
     let inheritedTribe = "N/A";
-    
+
     if (invitedBy.trim() !== "") {
       const inviterMatch = members.find(m => 
         `${m.first_name} ${m.last_name || ""}`.trim().toLowerCase() === invitedBy.trim().toLowerCase()
       );
-      
+
       if (inviterMatch && inviterMatch.tribe) {
         inheritedTribe = inviterMatch.tribe;
       }
@@ -171,7 +162,7 @@ export default function UsherAttendance() {
 
     lines.forEach((line) => {
       const parts = line.split(/\s+/);
-      
+
       let firstName = "";
       let middleInitial = null;
       let lastName = "";
@@ -230,7 +221,7 @@ export default function UsherAttendance() {
       setInsertRole("Visitor");
       setShowAddVisitor(false);
       setShowInviterDropdown(false);
-      
+
       alert(`Successfully saved ${newlyCreatedMembers.length} records! Tribe set to: ${inheritedTribe}`);
     } catch (err) {
       console.error("Database write error:", err);
@@ -244,13 +235,12 @@ export default function UsherAttendance() {
     try {
       setSaving(true);
       const activeService = getServiceName(selectedDate);
-      
-      // Use a Map to automatically deduplicate by fullName
+
       const uniquePayloadMap = new Map();
 
       members.forEach(member => {
         const fullName = `${member.first_name} ${member.last_name || ""}`.trim();
-        
+
         let finalTribe = member.tribe || "N/A";
         if (member.invited_by) {
           const inviterMatch = members.find(m => {
@@ -262,9 +252,6 @@ export default function UsherAttendance() {
           }
         }
 
-        // Setting the item in the Map using fullName as the key.
-        // If a duplicate name exists, this will just overwrite it,
-        // guaranteeing a unique array for the upsert payload.
         uniquePayloadMap.set(fullName, {
           name: fullName,
           date: selectedDate,
@@ -275,7 +262,6 @@ export default function UsherAttendance() {
         });
       });
 
-      // Convert the Map values back to an array
       const payload = Array.from(uniquePayloadMap.values());
 
       if (payload.length > 0) {
@@ -285,7 +271,7 @@ export default function UsherAttendance() {
 
         if (error) throw error;
       }
-      
+
       setShowAddVisitor(false);
       alert(`Attendance successfully saved!`);
     } catch (err) {
@@ -304,10 +290,10 @@ export default function UsherAttendance() {
 
     const headers = ["Name", "Date", "Tribe", "Invited By", "Status", "Service"];
     const activeService = getServiceName(selectedDate);
-    
+
     const rows = filteredMembers.map(member => {
       const fullName = `${member.first_name} ${member.last_name || ""}`.trim();
-      
+
       let finalTribe = member.tribe || "N/A";
       if (member.invited_by) {
         const inviterMatch = members.find(m => `${m.first_name} ${m.last_name || ""}`.trim().toLowerCase() === member.invited_by.trim().toLowerCase());
@@ -335,7 +321,7 @@ export default function UsherAttendance() {
     downloadLink.setAttribute("href", url);
     downloadLink.setAttribute("download", `${activeService.replace(/\s+/g, '_')}_Report_${selectedDate}.csv`);
     downloadLink.style.visibility = "hidden";
-    
+
     document.body.appendChild(downloadLink);
     downloadLink.click();
     document.body.removeChild(downloadLink);
@@ -350,18 +336,15 @@ export default function UsherAttendance() {
   const filteredMembers = members.filter(member => {
     const fullName = `${member.first_name} ${member.last_name || ""}`.toLowerCase();
     const matchesSearch = fullName.includes(searchTerm.toLowerCase());
-    
+
     let matchesCriteria = true;
     if (primaryFilter === "Minister") {
       matchesCriteria = (member.role || "").toLowerCase() === "minister";
-    } 
-    else if (primaryFilter === "1st Timer") {
+    } else if (primaryFilter === "1st Timer") {
       matchesCriteria = (member.role || "").toLowerCase() === "1st timer";
-    }
-    else if (primaryFilter === "2nd Timer") {
+    } else if (primaryFilter === "2nd Timer") {
       matchesCriteria = (member.role || "").toLowerCase() === "2nd timer";
-    }
-    else if (primaryFilter === "Visitor") {
+    } else if (primaryFilter === "Visitor") {
       matchesCriteria = (member.role || "").toLowerCase() === "visitor";
     } else if (primaryFilter === "Member") { 
       matchesCriteria = (member.role || "").toLowerCase() === "member";
@@ -384,22 +367,38 @@ export default function UsherAttendance() {
   const presentCount = Object.values(attendance).filter(v => v === "Present").length;
   const absentCount = Object.values(attendance).filter(v => v === "Absent").length;
 
-  const generatePureTextBlock = () => {
-    const activePresentList = filteredMembers.filter(
-      (member) => attendance[member.id] === "Present"
-    );
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // TABBED MODAL HELPERS
+  // ═══════════════════════════════════════════════════════════════════════════════
 
-    if (activePresentList.length === 0) {
-      return "No records checked for this selection.";
+  const presentList = filteredMembers.filter(m => attendance[m.id] === "Present");
+  const absentList = filteredMembers.filter(m => attendance[m.id] !== "Present");
+
+  const formatMemberName = (member) => {
+    const name = `${member.first_name} ${member.last_name || ""}`.trim();
+    return member.invited_by ? `${name} (Invited by: ${member.invited_by})` : name;
+  };
+
+  const generateTabText = (tab) => {
+    const list = tab === "present" ? presentList : absentList;
+    const label = tab === "present" ? "CHECKED (Present)" : "UNCHECKED (Absent)";
+
+    let output = `${label} — ${list.length}\n`;
+    output += `${"─".repeat(30)}\n`;
+
+    if (list.length === 0) {
+      output += tab === "present" ? "No checked records.\n" : "No unchecked records.\n";
+    } else {
+      output += list.map(formatMemberName).join("\n");
     }
 
-    return activePresentList
-      .map((member) => {
-        return member.invited_by
-          ? `${member.first_name} ${member.last_name || ""} (Invited by: ${member.invited_by})`.trim()
-          : `${member.first_name} ${member.last_name || ""}`.trim();
-      })
-      .join("\n");
+    return output;
+  };
+
+  const handleCopyActiveTab = () => {
+    const text = generateTabText(modalTab);
+    navigator.clipboard.writeText(text);
+    alert(`${modalTab === "present" ? "Present" : "Absent"} list copied to clipboard!`);
   };
 
   return (
@@ -557,7 +556,7 @@ export default function UsherAttendance() {
                 <span>📋 Quick Database Member Insertion</span>
               </h3>
               <form onSubmit={handleBulkVisitorSubmit} className="flex flex-col gap-3">
-                
+
                 <div className="w-full bg-slate-50 border border-slate-100 p-2.5 rounded-lg flex items-center gap-3">
                   <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Select Database Role:</label>
                   <div className="flex gap-2">
@@ -684,7 +683,7 @@ export default function UsherAttendance() {
             <div className="divide-y divide-slate-50">
               {filteredMembers.map((member) => {
                 const isPresent = attendance[member.id] === "Present";
-                
+
                 return (
                   <div
                     key={member.id}
@@ -727,45 +726,184 @@ export default function UsherAttendance() {
         </div>
       </div>
 
+      {/* ═══════════════════════════════════════════════════════════════════════════════
+          TABBED ATTENDANCE SUMMARY MODAL
+          ═══════════════════════════════════════════════════════════════════════════════ */}
       {showCheckedModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white w-full max-w-sm p-4 rounded-xl shadow-xl flex flex-col max-h-[70vh]">
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Present List</span>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(generatePureTextBlock());
-                    alert("List copied to clipboard!");
-                  }}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-bold"
-                >
-                  Copy
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => setShowCheckedModal(false)}
-                  className="text-xs text-slate-400 hover:text-slate-600 font-bold"
-                >
-                  Close
-                </button>
-              </div>
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl flex flex-col max-h-[80vh] overflow-hidden">
+
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">
+                Attendance Summary
+              </h2>
+              <button 
+                type="button"
+                onClick={() => setShowCheckedModal(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+              >
+                <FaTimes size={16} />
+              </button>
             </div>
 
-            <pre className="flex-1 overflow-y-auto bg-slate-50 p-3.5 rounded-lg text-xs text-slate-700 font-sans whitespace-pre-wrap leading-relaxed select-text border border-slate-200">
-              {generatePureTextBlock()}
-            </pre>
+            {/* Tab Bar */}
+            <div className="flex border-b border-slate-100">
+              <button
+                type="button"
+                onClick={() => setModalTab("present")}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold transition-all relative ${
+                  modalTab === "present"
+                    ? "text-emerald-600"
+                    : "text-slate-400 hover:text-slate-600"
+                }`}
+              >
+                <FaCheckCircle size={14} />
+                Checked
+                <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-black ${
+                  modalTab === "present" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+                }`}>
+                  {presentList.length}
+                </span>
+                {modalTab === "present" && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500 rounded-full" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab("absent")}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold transition-all relative ${
+                  modalTab === "absent"
+                    ? "text-rose-600"
+                    : "text-slate-400 hover:text-slate-600"
+                }`}
+              >
+                <FaTimes size={14} />
+                Unchecked
+                <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-black ${
+                  modalTab === "absent" ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-500"
+                }`}>
+                  {absentList.length}
+                </span>
+                {modalTab === "absent" && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-rose-500 rounded-full" />
+                )}
+              </button>
+            </div>
+
+            {/* Copy Button Row */}
+            <div className="px-4 py-2.5 bg-slate-50/50 border-b border-slate-100 flex justify-end">
+              <button
+                type="button"
+                onClick={handleCopyActiveTab}
+                className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors px-3 py-1.5 rounded-lg hover:bg-blue-50"
+              >
+                <FaFileDownload size={12} />
+                Copy {modalTab === "present" ? "Checked" : "Unchecked"} List
+              </button>
+            </div>
+
+            {/* List Content */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {modalTab === "present" ? (
+                presentList.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <FaCheckCircle className="text-emerald-300" size={20} />
+                    </div>
+                    <p className="text-sm font-bold text-slate-400">No checked records yet</p>
+                    <p className="text-xs text-slate-300 mt-1">Mark members as present to see them here</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {presentList.map((member) => (
+                      <div
+                        key={member.id}
+                        className="flex items-center gap-3 px-3 py-2.5 bg-emerald-50/40 border border-emerald-100/50 rounded-xl"
+                      >
+                        <div className="w-7 h-7 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <FaCheckCircle className="text-emerald-500" size={12} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-slate-700 truncate">
+                            {member.first_name} {member.last_name}
+                          </p>
+                          {member.invited_by && (
+                            <p className="text-[10px] text-slate-400 font-medium">
+                              via {member.invited_by}
+                            </p>
+                          )}
+                        </div>
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full flex-shrink-0">
+                          Present
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : (
+                absentList.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <FaTimes className="text-rose-300" size={20} />
+                    </div>
+                    <p className="text-sm font-bold text-slate-400">No unchecked records</p>
+                    <p className="text-xs text-slate-300 mt-1">Everyone is present!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {absentList.map((member) => (
+                      <div
+                        key={member.id}
+                        className="flex items-center gap-3 px-3 py-2.5 bg-rose-50/40 border border-rose-100/50 rounded-xl"
+                      >
+                        <div className="w-7 h-7 bg-rose-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <FaTimes className="text-rose-400" size={12} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-slate-700 truncate">
+                            {member.first_name} {member.last_name}
+                          </p>
+                          {member.invited_by && (
+                            <p className="text-[10px] text-slate-400 font-medium">
+                              via {member.invited_by}
+                            </p>
+                          )}
+                        </div>
+                        <span className="text-[10px] font-bold text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full flex-shrink-0">
+                          Absent
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center">
+              <p className="text-[10px] text-slate-400 font-medium">
+                Showing {modalTab === "present" ? presentList.length : absentList.length} of {filteredMembers.length} filtered
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowCheckedModal(false)}
+                className="text-xs font-bold text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-200/50 transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* 💡 FLOATING SCROLL TO TOP COMPONENT */}
+      {/* Floating Scroll to Top */}
       {showScrollTop && (
         <button
           type="button"
           onClick={scrollToTop}
-          className="fixed bottom-6 right-6 z-50 bg-blue-600 hover:bg-blue-700 p-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fadeIn flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          className="fixed bottom-6 right-6 z-50 bg-blue-600 hover:bg-blue-700 p-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           aria-label="Scroll to top"
         >
           <FaArrowUp className="text-sm md:text-base" />
@@ -774,4 +912,3 @@ export default function UsherAttendance() {
     </div>
   );
 }
-

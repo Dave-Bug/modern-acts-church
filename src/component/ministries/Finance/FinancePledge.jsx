@@ -930,7 +930,7 @@ const getAnnualRows = () => {
 
                           <td className="py-2.5 px-2 sm:px-3 text-center">
                             <button onClick={() => toggleExpand(row.memberId)}
-                              className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded cursor-pointer active:scale-90 transition-colors ${isExpanded ? "bg-slate-700 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
+                              className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded cursor-pointer active:scale-90 transition-colors ${isExpanded ? "bg-slate-700" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
                               {isExpanded ? <FaMinus className="text-[10px]" /> : <FaEdit className="text-[10px]" />}
                             </button>
                           </td>
@@ -1082,7 +1082,7 @@ const getAnnualRows = () => {
             <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
               <div>
                 <h3 className="font-black text-sm uppercase tracking-wider">
-                  {editingPledgeId ? "Update" : "Set"} Week {weeks.indexOf(selectedWeek) + 1} Pledge
+                  {editingPledgeId ? "Update" : "Set"} Week PledgeS
                 </h3>
                 <p className="text-[10px] text-slate-400 mt-0.5">{selectedMember.first_name} {selectedMember.last_name}</p>
               </div>
@@ -1144,7 +1144,7 @@ const getAnnualRows = () => {
                 }} className="px-4 py-2 text-xs font-bold text-rose-500 hover:text-rose-700 cursor-pointer">Delete</button>
               )}
               <button type="button" onClick={() => setShowEditModal(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 cursor-pointer">Cancel</button>
-              <button type="submit" className="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-sm cursor-pointer">
+              <button type="submit" className="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer">
                 {editingPledgeId ? "Update" : "Set"} Amount
               </button>
             </div>

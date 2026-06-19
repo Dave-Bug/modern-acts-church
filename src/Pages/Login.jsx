@@ -113,44 +113,63 @@ export default function Login({ onAuthSuccess }) {
   };
 
   // --- 🔐 SIGN IN SUBMIT ACTION ---
-  const handleLogin = async (e) => {
-  e.preventDefault();
-  if (!name.trim() || !password) {
-    setErrorMessage("Please fill out your Name and Password.");
-    return;
-  }
+   const handleLogin = async (e) => {
+    e.preventDefault();
+    if (!name.trim() || !password) {
+      setErrorMessage("Please fill out your Name and Password.");
+      return;
+    }
 
-  try {
-    setLoading(true);
-    setErrorMessage("");
+    try {
+      setLoading(true);
+      setErrorMessage("");
 
-    // 🔎 Pulling the new 'access' field from the table row
-    const { data: userRecord, error } = await supabase
-      .from("church_auth")
-      .select("name, ministry, type, status, access")
-      .eq("name", name.trim())
-      .eq("password", password)
-      .maybeSingle();
+      // 1. Verify credentials from church_auth
+      const { data: userRecord, error } = await supabase
+        .from("church_auth")
+        .select("name, ministry, type, status, access")
+        .eq("name", name.trim())
+        .eq("password", password)
+        .maybeSingle();
 
-    if (error) throw error;
+      if (error) throw error;
 
-    if (userRecord) {
-      // 🛡️ BLOCK ACCESS IF ACCOUNT IS STILL PENDING APPROVAL
+      if (!userRecord) {
+        setErrorMessage("Invalid credentials combination profile.");
+        return;
+      }
+
       if (userRecord.access !== "Approved") {
         setErrorMessage("Access Denied: Your registration is currently pending administrator approval.");
         return;
       }
-      
-      onAuthSuccess(userRecord);
-    } else {
-      setErrorMessage("Invalid credentials combination profile.");
+
+      // 2. 🔄 FETCH FRESH MINISTRY from usher_members
+      const nameParts = userRecord.name.trim().split(" ");
+      const firstName = nameParts[0];
+
+      const { data: freshMember, error: memberErr } = await supabase
+        .from("usher_members")
+        .select("ministry")
+        .ilike("first_name", `%${firstName}%`)
+        .maybeSingle();
+
+      if (memberErr) console.error("Failed to fetch fresh ministry:", memberErr);
+
+      // 3. Merge fresh ministry into the user record
+      const updatedUser = {
+        ...userRecord,
+        ministry: freshMember?.ministry || userRecord.ministry
+      };
+
+      onAuthSuccess(updatedUser);
+
+    } catch (err) {
+      setErrorMessage("System authorization connection issues.");
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    setErrorMessage("System authorization connection issues.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
 // --- 📝 REGISTRATION SUBMIT ACTION (Defaults to Pending status) ---
 const handleRegister = async (e) => {

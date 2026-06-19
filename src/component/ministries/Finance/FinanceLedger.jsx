@@ -377,7 +377,7 @@ export default function Finance() {
         {/* Header */}
         <div className="text-center mb-6">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight">
-            Finance <span className="text-blue-600">Ledger</span>
+            Finance <span className="text-blue-600">Tracker</span>
           </h1>
         </div>
 

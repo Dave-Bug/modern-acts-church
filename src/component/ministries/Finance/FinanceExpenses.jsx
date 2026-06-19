@@ -390,7 +390,7 @@ export default function FinanceExpenses() {
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-xl sm:text-3xl md:text-4xl font-black tracking-tight">
-              Church <span className="text-rose-600">Expenses</span>
+              Church <span className="text-rose-700">Expenses</span>
             </h1>
           </div>
           <div className="flex items-center gap-2 self-start sm:self-auto">
@@ -402,25 +402,28 @@ export default function FinanceExpenses() {
 
         <div className="flex border-b border-slate-200 mb-5 gap-1 sm:gap-2">
           <button onClick={() => setActiveTab("monthly")}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer ${activeTab === "monthly" ? "border-rose-600 text-rose-600" : "border-transparent text-slate-400 hover:text-slate-600"}`}>
-            <FaTable /> <span className="hidden xs:inline">Monthly Detail</span><span className="xs:hidden">Monthly</span>
-          </button>
-          <button onClick={() => setActiveTab("annual")}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer ${activeTab === "annual" ? "border-rose-600 text-rose-600" : "border-transparent text-slate-400 hover:text-slate-600"}`}>
-            <FaCalendarAlt /> <span className="hidden xs:inline">Annual Summary</span><span className="xs:hidden">Annual</span>
-          </button>
+                      className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer ${activeTab === "monthly" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-400 hover:text-slate-600"}`}>
+                      <FaTable /> <span className="hidden xs:inline">Monthly Detail</span><span className="xs:hidden">Monthly</span>
+                    </button>
+                    <button onClick={() => setActiveTab("annual")}
+                      className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer ${activeTab === "annual" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-400 hover:text-slate-600"}`}>
+                      <FaCalendarAlt /> <span className="hidden xs:inline">Annual Summary</span><span className="xs:hidden">Annual</span>
+                    </button>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3 mb-4">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 mb-4">
           {[
-            { label: "Total Records", value: expenses.length, color: "text-slate-600" },
-            { label: "Monthly Outlay", value: `₱${formatCurrency(monthlyGrandTotal)}`, color: "text-rose-600" },
-            { label: "Categories", value: monthlyCategories.length, color: "text-blue-600" },
+            { label: "Total Records", value: expenses.length, color: "text-slate-700", icon: <FaTable className="text-slate-400" /> },
+            { label: "Monthly Outlay", value: `₱${formatCurrency(monthlyGrandTotal)}`, color: "text-slate-800", icon: <FaArrowDown className="text-slate-400" /> },
+            { label: "Categories", value: monthlyCategories.length, color: "text-blue-600", icon: <FaCalendarAlt className="text-blue-400" /> },
           ].map((stat) => (
-            <div key={stat.label} className="bg-white border border-slate-200 rounded-xl p-2.5 sm:px-4 sm:py-2.5 shadow-sm min-w-[80px] sm:min-w-[90px]">
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{stat.label}</div>
-              <div className={`text-sm sm:text-base md:text-lg font-black truncate ${stat.color}`}>{stat.value}</div>
+            <div key={stat.label} className="bg-white border border-slate-200 rounded-xl p-3 sm:p-4 shadow-sm min-w-[100px]">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <span className="text-sm">{stat.icon}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</span>
+              </div>
+              <div className={`text-base sm:text-lg font-black truncate ${stat.color}`}>{stat.value}</div>
             </div>
           ))}
         </div>
@@ -444,7 +447,7 @@ export default function FinanceExpenses() {
         <div className="lg:hidden space-y-3 mb-4">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <FaSpinner className="animate-spin text-rose-500 text-xl mr-2" />
+              <FaSpinner className="animate-spin text-slate-500 text-xl mr-2" />
               <span className="text-sm text-slate-400">Loading...</span>
             </div>
           ) : activeTab === "monthly" ? (
@@ -463,18 +466,18 @@ export default function FinanceExpenses() {
                         {isAddNew ? (
                           <FaPlus className="text-slate-300 text-xs" />
                         ) : (
-                          <FaArrowDown className="text-rose-500 text-xs" />
+                          <FaArrowDown className="text-slate-500 text-xs" />
                         )}
                         <span className={`font-bold text-sm ${isAddNew ? 'text-slate-400' : 'text-slate-900'}`}>{row.category}</span>
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <div className="text-sm font-black text-slate-900">
+                      <div className="text-base font-black text-slate-900">
                         {isAddNew ? <span className="text-slate-300">—</span> : `₱${formatCurrency(row.total)}`}
                       </div>
                       {!isAddNew && (
                         <button onClick={() => toggleExpand(row.category)}
-                          className="text-[10px] text-rose-600 font-bold mt-0.5 flex items-center gap-0.5 ml-auto">
+                          className="text-sm text-slate-500 font-bold mt-1 flex items-center gap-0.5 ml-auto">
                           {isExpanded ? <>Less <FaChevronDown className="text-[8px]" /></> : <>Details <FaChevronRight className="text-[8px]" /></>}
                         </button>
                       )}
@@ -493,15 +496,15 @@ export default function FinanceExpenses() {
                                 <button
                                   key={record.id}
                                   onClick={() => openEditModal(record, week)}
-                                  className="py-1.5 px-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer text-left"
+                                  className="py-1.5 px-1 rounded bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors cursor-pointer text-left"
                                 >
-                                  <div className="font-bold text-[8px] text-rose-800 truncate">{record.description || 'Expense'}</div>
-                                  <div className="font-mono font-bold text-[10px] text-rose-600">₱{formatCurrency(record.amount)}</div>
+                                  <div className="font-bold text-xs text-slate-700 truncate">{record.description || 'Expense'}</div>
+                                  <div className="font-mono font-bold text-sm text-slate-700">₱{formatCurrency(record.amount)}</div>
                                 </button>
                               ))}
                               <button
                                 onClick={() => openAddModal(week)}
-                                className="py-2 px-1 rounded font-mono font-bold text-[10px] text-slate-300 hover:text-rose-500 hover:bg-rose-50 border border-dashed border-slate-200 transition-colors cursor-pointer flex items-center justify-center min-h-[32px]"
+                                className="py-2 px-1 rounded font-mono font-bold text-xs text-slate-300 hover:text-slate-500 hover:bg-slate-50 border border-dashed border-slate-200 transition-colors cursor-pointer flex items-center justify-center min-h-[32px]"
                               >
                                 +
                               </button>
@@ -519,16 +522,16 @@ export default function FinanceExpenses() {
                       <div className="grid grid-cols-2 gap-2">
                         {row.weeklyData.map((week, idx) => (
                           <div key={idx} className="bg-slate-50 border border-slate-200 rounded-lg p-2">
-                            <div className="text-[9px] font-bold text-slate-400 uppercase mb-1">Week {idx + 1} ({week.label})</div>
+                            <div className="text-[11px] font-bold text-slate-400 uppercase mb-1">Week {idx + 1} ({week.label})</div>
                             <div className="flex flex-col gap-1">
                               {week.records.length > 0 ? week.records.map(record => (
                                 <button
                                   key={record.id}
                                   onClick={() => openEditModal(record, week)}
-                                  className="text-left text-xs font-bold text-rose-700 hover:text-rose-900 cursor-pointer leading-tight"
+                                  className="text-left text-xs font-bold text-slate-700 hover:text-rose-900 cursor-pointer leading-tight"
                                 >
                                   <div className="truncate">{record.description || 'Expense'}</div>
-                                  <div className="font-mono text-rose-600">₱{formatCurrency(record.amount)}</div>
+                                  <div className="font-mono text-slate-600">₱{formatCurrency(record.amount)}</div>
                                 </button>
                               )) : (
                                 <span className="text-sm text-slate-300">—</span>
@@ -548,23 +551,25 @@ export default function FinanceExpenses() {
               <div className="py-12 text-center text-slate-400 text-sm bg-white rounded-2xl border border-slate-200">No records found.</div>
             ) : filteredAnnualRows.map((row) => (
               <div key={row.category} className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                <div className="p-3 flex items-center justify-between gap-2">
+                <div className="p-4 flex items-center justify-between gap-3 bg-slate-50 border-b border-slate-200">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <FaArrowDown className="text-rose-500 text-xs" />
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                        <FaArrowDown className="text-slate-500 text-sm" />
+                      </div>
                       <span className="font-bold text-sm text-slate-900">{row.category}</span>
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <div className="text-sm font-black text-rose-700">₱{formatCurrency(row.total)}</div>
+                    <div className="text-lg font-black text-slate-700">₱{formatCurrency(row.total)}</div>
                   </div>
                 </div>
-                <div className="px-3 pb-3">
-                  <div className="grid grid-cols-6 gap-1">
+                <div className="p-4">
+                  <div className="grid grid-cols-6 gap-1.5">
                     {row.months.map((m, idx) => (
-                      <div key={idx} className={`text-center py-1.5 px-0.5 rounded-md ${m > 0 ? 'bg-rose-50 text-rose-700' : 'bg-slate-50 text-slate-300'}`}>
-                        <div className="text-[8px] font-bold uppercase">{MONTH_NAMES[idx]}</div>
-                        <div className="text-[10px] font-mono font-bold">{m > 0 ? formatCurrency(m) : "—"}</div>
+                      <div key={idx} className={`text-center py-2 px-0.5 rounded-lg ${m > 0 ? 'bg-slate-50 border border-slate-200 text-slate-700' : 'bg-white border border-slate-100 text-slate-300'}`}>
+                        <div className="text-[11px] font-bold text-slate-400 uppercase mb-0.5">{MONTH_NAMES[idx]}</div>
+                        <div className="text-xs font-mono font-bold">{m > 0 ? formatCurrency(m) : "—"}</div>
                       </div>
                     ))}
                   </div>
@@ -578,7 +583,7 @@ export default function FinanceExpenses() {
         <div className="hidden lg:block bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <FaSpinner className="animate-spin text-rose-500 text-xl mr-2" />
+              <FaSpinner className="animate-spin text-slate-500 text-xl mr-2" />
               <span className="text-xs sm:text-sm text-slate-400">Syncing expense data...</span>
             </div>
           ) : activeTab === "monthly" ? (
@@ -596,20 +601,20 @@ export default function FinanceExpenses() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
                   {filteredMonthlyRows.length === 0 ? (
-                    <tr><td colSpan={weeks.length + 4} className="py-12 text-center text-slate-400 text-sm">No expense records found for this period.</td></tr>
+                    <tr><td colSpan={weeks.length + 4} className="py-12 text-center text-slate-400 text-base">No expense records found for this period.</td></tr>
                   ) : filteredMonthlyRows.map((row) => {
                     const isExpanded = !!expandedCategories[row.category];
                     const isAddNew = row.isAddNew;
 
                     return (
                       <React.Fragment key={row.category}>
-                        <tr className={`${isExpanded ? 'bg-rose-50/30' : 'hover:bg-slate-50/60'} transition-colors ${isAddNew ? 'bg-slate-50/30' : ''}`}>
+                        <tr className={`${isExpanded ? 'bg-slate-50/30' : 'hover:bg-slate-50/60'} transition-colors ${isAddNew ? 'bg-slate-50/30' : ''}`}>
                           <td className="py-2.5 px-3 sm:px-4">
                             <div className="flex items-center gap-2">
                               {isAddNew ? (
                                 <FaPlus className="text-slate-300 text-xs" />
                               ) : (
-                                <FaArrowDown className="text-rose-500 text-xs" />
+                                <FaArrowDown className="text-slate-500 text-xs" />
                               )}
                               <span className={`font-bold ${isAddNew ? 'text-slate-400' : 'text-slate-900'}`}>{row.category}</span>
                             </div>
@@ -624,17 +629,17 @@ export default function FinanceExpenses() {
                                     <button
                                       key={record.id}
                                       onClick={() => openEditModal(record, week)}
-                                      className="block w-full py-1.5 px-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer text-left leading-tight"
+                                      className="block w-full py-1.5 px-1 rounded bg-slate-50 hover:bg-slate-100 text-red-500 border border-slate-200 transition-colors cursor-pointer text-left leading-tight"
                                       title={`${record.description || 'Expense'} — ₱${formatCurrency(record.amount)} on ${record.date}`}
                                     >
-                                      <div className="font-bold text-[9px] sm:text-[10px] text-rose-800 truncate">{record.description || 'Expense'}</div>
-                                      <div className="font-mono font-bold text-[10px] sm:text-xs text-rose-600">₱{formatCurrency(record.amount)}</div>
+                                      <div className="font-bold text-xs sm:text-sm text-slate-700 truncate">{record.description || 'Expense'}</div>
+                                      <div className="font-mono font-bold text-xs sm:text-sm text-slate-700">₱{formatCurrency(record.amount)}</div>
                                     </button>
                                   ))}
                                   {/* Add button */}
                                   <button
                                     onClick={() => openAddModal(week)}
-                                    className="w-full py-1 px-1 rounded font-mono font-bold text-[10px] sm:text-xs text-slate-300 hover:text-rose-500 hover:bg-rose-50 border border-dashed border-slate-200 transition-colors cursor-pointer"
+                                    className="w-full py-1 px-1 rounded font-mono font-bold text-xs sm:text-sm text-slate-300 hover:text-slate-500 hover:bg-slate-50 border border-dashed border-slate-200 transition-colors cursor-pointer"
                                     title={isAddNew ? "Click to add new expense" : "Click to add amount"}
                                   >
                                     +
@@ -651,7 +656,7 @@ export default function FinanceExpenses() {
                           <td className="py-2.5 px-2 sm:px-3 text-center">
                             {!isAddNew && (
                               <button onClick={() => toggleExpand(row.category)}
-                                className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded cursor-pointer active:scale-90 transition-colors ${isExpanded ? "bg-slate-700 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
+                                className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded cursor-pointer active:scale-90 transition-colors ${isExpanded ? "bg-slate-700" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
                                 {isExpanded ? <FaMinus className="text-[10px]" /> : <FaEdit className="text-[10px]" />}
                               </button>
                             )}
@@ -661,20 +666,20 @@ export default function FinanceExpenses() {
                         {isExpanded && !isAddNew && (
                           <tr className="bg-slate-50/50">
                             <td colSpan={weeks.length + 4} className="py-3 px-4 sm:px-6">
-                              <div className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-2 tracking-wider">Week Breakdown</div>
+                              <div className="text-xs sm:text-sm font-bold text-slate-400 uppercase mb-2 tracking-wider">Week Breakdown</div>
                               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
                                 {row.weeklyData.map((week, idx) => (
                                   <div key={idx} className="bg-white border border-slate-200 rounded-lg p-2 shadow-sm">
-                                    <div className="text-[9px] font-bold text-slate-400 uppercase mb-1">Week {idx + 1} ({week.label})</div>
+                                    <div className="text-[11px] font-bold text-slate-400 uppercase mb-1">Week {idx + 1} ({week.label})</div>
                                     <div className="flex flex-col gap-1">
                                       {week.records.length > 0 ? week.records.map(record => (
                                         <button
                                           key={record.id}
                                           onClick={() => openEditModal(record, week)}
-                                          className="text-left text-xs sm:text-sm font-bold text-rose-700 hover:text-rose-900 cursor-pointer leading-tight"
+                                          className="text-left text-sm sm:text-base font-bold text-slate-700 hover:text-slate-900 cursor-pointer leading-tight"
                                         >
                                           <div className="truncate">{record.description || 'Expense'}</div>
-                                          <div className="font-mono text-rose-600">₱{formatCurrency(record.amount)}</div>
+                                          <div className="font-mono text-slate-600">₱{formatCurrency(record.amount)}</div>
                                         </button>
                                       )) : (
                                         <span className="text-sm text-slate-300">—</span>
@@ -706,21 +711,21 @@ export default function FinanceExpenses() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs sm:text-sm font-semibold">
                   {filteredAnnualRows.length === 0 ? (
-                    <tr><td colSpan={14} className="py-12 text-center text-slate-400 text-sm">No expense records found for this year.</td></tr>
+                    <tr><td colSpan={14} className="py-12 text-center text-slate-400 text-base">No expense records found for this year.</td></tr>
                   ) : filteredAnnualRows.map((row) => (
                     <tr key={row.category} className="hover:bg-slate-50/60 transition-colors">
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
-                          <FaArrowDown className="text-rose-500 text-xs" />
+                          <FaArrowDown className="text-slate-500 text-xs" />
                           <span className="font-bold text-slate-900">{row.category}</span>
                         </div>
                       </td>
                       {row.months.map((m, idx) => (
-                        <td key={idx} className={`py-3 px-1 text-right font-mono ${m > 0 ? 'text-rose-600 font-bold' : 'text-slate-300'}`}>
+                        <td key={idx} className={`py-3 px-1 text-right font-mono ${m > 0 ? 'text-slate-600 font-bold' : 'text-slate-300'}`}>
                           {m > 0 ? formatCurrency(m) : "—"}
                         </td>
                       ))}
-                      <td className="py-3 px-3 text-right font-mono font-black text-rose-700 bg-rose-50/20">₱{formatCurrency(row.total)}</td>
+                      <td className="py-3 px-3 text-right font-mono font-black text-slate-700 bg-slate-50/20">₱{formatCurrency(row.total)}</td>
                     </tr>
                   ))}
                   <tr className="bg-slate-100/50 font-black border-t border-slate-200">
@@ -730,7 +735,7 @@ export default function FinanceExpenses() {
                         {mTotal > 0 ? formatCurrency(mTotal) : "—"}
                       </td>
                     ))}
-                    <td className="py-3 px-3 text-right font-mono text-rose-700 bg-rose-100/30">₱{formatCurrency(annualGrandTotal)}</td>
+                    <td className="py-3 px-3 text-right font-mono text-slate-700 bg-slate-100/30">₱{formatCurrency(annualGrandTotal)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -743,14 +748,14 @@ export default function FinanceExpenses() {
       {showEditModal && selectedWeek && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <form onSubmit={handleSaveExpense} className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+            <div className="p-4 bg-slate-900 flex items-center justify-between">
               <div>
                 <h3 className="font-black text-sm uppercase tracking-wider">
                   {editingExpenseId ? "Update" : "Add New"} Expense
                 </h3>
                 <p className="text-[10px] text-slate-400 mt-0.5">
                   Week {weeks.findIndex(w => w.start === selectedWeek.start && w.end === selectedWeek.end) + 1} ({selectedWeek.label})
-                  {!editingExpenseId && <span className="ml-1 text-rose-400">— New Entry</span>}
+                  {!editingExpenseId && <span className="ml-1 text-slate-400">— New Entry</span>}
                 </p>
               </div>
               <button type="button" onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-white"><FaTimes /></button>
@@ -761,21 +766,21 @@ export default function FinanceExpenses() {
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Amount (PHP)</label>
                   <input type="number" step="0.01" min="0" required value={editAmount} onChange={(e) => setEditAmount(e.target.value)} placeholder="0.00"
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 focus:outline-none focus:border-rose-500 font-mono" />
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 focus:outline-none focus:border-slate-500 font-mono" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Date</label>
                   <input type="date" required value={editDate} onChange={(e) => setEditDate(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 focus:outline-none focus:border-rose-500" />
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 focus:outline-none focus:border-slate-500" />
                 </div>
               </div>
 
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                  Specific Expense <span className="text-rose-500">*</span>
+                  Specific Expense <span className="text-slate-500">*</span>
                 </label>
                 <input type="text" required value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="e.g. Car repair, Gas, Rent, Supplies..."
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 focus:outline-none focus:border-rose-500" />
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 focus:outline-none focus:border-slate-500" />
                 <p className="text-[9px] text-slate-400 mt-1">Type the specific expense here (car, gas, food, rent, etc.)</p>
               </div>
             </div>
@@ -791,10 +796,10 @@ export default function FinanceExpenses() {
                   } catch (err) {
                     alert(`Error deleting: ${err.message}`);
                   }
-                }} className="px-4 py-2 text-xs font-bold text-rose-500 hover:text-rose-700 cursor-pointer">Delete</button>
+                }} className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 cursor-pointer">Delete</button>
               )}
               <button type="button" onClick={() => setShowEditModal(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 cursor-pointer">Cancel</button>
-              <button type="submit" className="bg-rose-600 hover:bg-rose-700 px-5 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-sm cursor-pointer">
+              <button type="submit" className="bg-slate-700 hover:bg-slate-800 px-5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer">
                 {editingExpenseId ? "Update" : "Create"} Expense
               </button>
             </div>

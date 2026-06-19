@@ -936,10 +936,10 @@ export default function FinanceTithes() {
       {showEditModal && selectedMember && selectedWeek && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm">
           <form onSubmit={handleSaveTithe} className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
-            <div className="p-3 sm:p-4 bg-slate-900 text-white flex items-center justify-between">
+            <div className="p-3 sm:p-4 bg-slate-900 flex items-center justify-between">
               <div>
                 <h3 className="font-black text-xs sm:text-sm uppercase tracking-wider">
-                  {editingTitheId ? "Update" : "Set"} Week {weeks.indexOf(selectedWeek) + 1} Tithe
+                  {editingTitheId ? "Update" : "Set"} Week TitheS
                 </h3>
                 <p className="text-[10px] text-slate-400 mt-0.5">{selectedMember.first_name} {selectedMember.last_name}</p>
               </div>
@@ -994,7 +994,7 @@ export default function FinanceTithes() {
                 }} className="px-3 sm:px-4 py-2 text-xs font-bold text-rose-500 hover:text-rose-700 cursor-pointer">Delete</button>
               )}
               <button type="button" onClick={() => setShowEditModal(false)} className="px-3 sm:px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 cursor-pointer">Cancel</button>
-              <button type="submit" className="bg-blue-600 hover:bg-blue-700 px-4 sm:px-5 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-sm cursor-pointer">
+              <button type="submit" className="bg-blue-600 hover:bg-blue-700 px-4 sm:px-5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer">
                 {editingTitheId ? "Update" : "Set"} Amount
               </button>
             </div>
