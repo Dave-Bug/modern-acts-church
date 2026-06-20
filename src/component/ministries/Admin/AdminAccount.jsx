@@ -260,7 +260,7 @@ export default function AdminAccount() {
                           <button
                             disabled={actionLoadingId !== null}
                             onClick={() => handleApprove(user.id)}
-                            className="flex-1 sm:flex-none flex justify-center items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-emerald-200 hover:-translate-y-0.5"
+                            className="flex-1 sm:flex-none flex justify-center items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-emerald-600 text-sm font-bold px-5 py-2.5 rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-emerald-200 hover:-translate-y-0.5"
                           >
                             <FaCheck /> Approve
                           </button>
