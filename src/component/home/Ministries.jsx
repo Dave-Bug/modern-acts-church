@@ -15,6 +15,7 @@ import {
   FaUserCircle,
   FaLock,
   FaExchangeAlt,
+  FaTimes, // ← ADDED: Close icon
 } from "react-icons/fa";
 import Login from "../../Pages/Login"; // Adjust relative path if needed
 
@@ -83,11 +84,8 @@ export default function Ministries() {
 
   // --- 🔄 SWITCH ACCOUNT LOGIC ---
   const handleSwitchAccount = () => {
-    // 1. Wipe the current active user out of session storage
     localStorage.removeItem("church_session_user");
     localStorage.clear();
-    
-    // 2. Open up the login modal popup overlay instantly
     setShowAuthModal(true);
   };
 
@@ -95,7 +93,7 @@ export default function Ministries() {
   const handleAuthSuccess = (userRecord) => {
     localStorage.setItem("church_session_user", JSON.stringify(userRecord));
     setShowAuthModal(false);
-    loadUserSession(); // Reload state context inline
+    loadUserSession();
   };
 
   return (
@@ -112,7 +110,7 @@ export default function Ministries() {
         </a>
       </div>
 
-      {/* 👤 ACTIVE PROFILE DISPLAY CHIP WITH "SWITCH" CAPABILITY */}
+      {/* 👤 ACTIVE PROFILE DISPLAY CHIP */}
       {currentUser && (
         <div className="fixed top-4 right-4 z-40 flex items-center gap-3 bg-white/90 backdrop-blur border border-slate-200 shadow-lg px-4 py-2 rounded-xl">
           <FaUserCircle className="text-slate-400 text-2xl flex-shrink-0" />
@@ -133,7 +131,6 @@ export default function Ministries() {
             {currentUser.status || "Viewer"}
           </span>
 
-          {/* Dynamic Action Interaction Triggers Account Switch */}
           <button
             onClick={handleSwitchAccount}
             title="Switch Account Profile"
@@ -212,10 +209,22 @@ export default function Ministries() {
         </p>
       </footer>
 
-      {/* 🔐 POPUP ACCOUNT CHANGER AUTHENTICATION MODAL */}
+      {/* 🔐 POPUP ACCOUNT CHANGER AUTHENTICATION MODAL WITH X BUTTON */}
       {showAuthModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-slate-950/80 backdrop-blur-md transition-all duration-300">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-slate-950/80 backdrop-blur-md transition-all duration-300"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowAuthModal(false); }}
+        >
           <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl bg-white border border-slate-100 p-2">
+            
+            {/* X CLOSE BUTTON */}
+            <button
+              onClick={() => setShowAuthModal(false)}
+              className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors"
+            >
+              <FaTimes size={14} />
+            </button>
+
             <Login onAuthSuccess={handleAuthSuccess} />
           </div>
         </div>
@@ -224,4 +233,3 @@ export default function Ministries() {
     </section>
   );
 }
-

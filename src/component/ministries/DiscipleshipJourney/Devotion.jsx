@@ -7,13 +7,11 @@ import {
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 
-// Utility to get current month in YYYY-MM format
 const getCurrentMonthString = () => {
   const today = new Date();
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
 };
 
-// Utility to get total days in a specific YYYY-MM
 const getDaysInMonth = (yearMonth) => {
   const [year, month] = yearMonth.split('-').map(Number);
   return new Date(year, month, 0).getDate();
@@ -24,12 +22,11 @@ const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Se
 export default function Devotion() {
   const [activeTab, setActiveTab] = useState("monthly");
   const [members, setMembers] = useState([]);
-  const [scores, setScores] = useState([]); // Holds the whole year's scores
+  const [scores, setScores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthString());
   
-  // Roster Modal States
   const [showRosterModal, setShowRosterModal] = useState(false);
   const [rosterSearchQuery, setRosterSearchQuery] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -44,14 +41,12 @@ export default function Devotion() {
   async function fetchData() {
     setLoading(true);
     try {
-      // 1. Fetch all members
       const { data: roster, error: rosterErr } = await supabase
         .from("usher_members")
         .select("id, first_name, last_name, is_devotion_tracked")
         .order("first_name", { ascending: true });
       if (rosterErr) throw rosterErr;
 
-      // 2. Fetch scores for the entire selected year
       const { data: yearScores, error: scoreErr } = await supabase
         .from("dj_devotions")
         .select("*")
@@ -68,36 +63,19 @@ export default function Devotion() {
     }
   }
 
-  // Handle Score Input
   const handleScoreUpdate = async (memberId, newScoreStr) => {
     let newScore = parseInt(newScoreStr, 10);
-    
-    // Validation: prevent negative or numbers higher than days in month
     if (isNaN(newScore) || newScoreStr === "") newScore = 0;
     if (newScore < 0) newScore = 0;
     if (newScore > daysInMonth) newScore = daysInMonth;
 
     try {
       const existingRecord = scores.find(s => s.member_id === memberId && s.tracking_month === selectedMonth);
-      
       if (existingRecord) {
-        // Update existing record
-        await supabase
-          .from("dj_devotions")
-          .update({ score: newScore })
-          .eq("id", existingRecord.id);
+        await supabase.from("dj_devotions").update({ score: newScore }).eq("id", existingRecord.id);
       } else {
-        // Insert new record
-        await supabase
-          .from("dj_devotions")
-          .insert([{ 
-            member_id: memberId, 
-            tracking_month: selectedMonth, 
-            score: newScore 
-          }]);
+        await supabase.from("dj_devotions").insert([{ member_id: memberId, tracking_month: selectedMonth, score: newScore }]);
       }
-      
-      // Silently update local state for fast UI
       setScores(prev => {
         if (existingRecord) {
           return prev.map(s => (s.member_id === memberId && s.tracking_month === selectedMonth) ? { ...s, score: newScore } : s);
@@ -110,66 +88,43 @@ export default function Devotion() {
     }
   };
 
-  // Toggle Tracking Status in Roster
   const handleToggleTracking = async (memberId, currentStatus) => {
     const updatedStatus = !currentStatus;
     try {
-      await supabase
-        .from("usher_members")
-        .update({ is_devotion_tracked: updatedStatus })
-        .eq("id", memberId);
-      
+      await supabase.from("usher_members").update({ is_devotion_tracked: updatedStatus }).eq("id", memberId);
       setMembers(prev => prev.map(m => m.id === memberId ? { ...m, is_devotion_tracked: updatedStatus } : m));
     } catch (err) {
       alert("Could not update roster status: " + err.message);
     }
   };
 
-  // Beautiful Excel Export Generator
   const exportToExcel = async () => {
     setExporting(true);
     try {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet(`Devotion Summary ${currentYear}`);
-
-      // General worksheet view settings
       worksheet.views = [{ showGridLines: true }];
 
-      // 1. Add Title Banner
       worksheet.mergeCells("A1:O1");
       const titleCell = worksheet.getCell("A1");
       titleCell.value = `CHURCH DEVOTION TRACKER SUMMARY — YEAR ${currentYear}`;
       titleCell.font = { name: "Segoe UI", size: 15, bold: true, color: { argb: "FFFFFF" } };
       titleCell.alignment = { horizontal: "center", vertical: "middle" };
-      titleCell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "D97706" } // Premium Amber-600
-      };
+      titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D97706" } };
       worksheet.getRow(1).height = 40;
 
-      // 2. Define Headers
       const headers = ["Member Name", ...MONTH_NAMES, "Annual Total", "Completion %"];
-      worksheet.addRow([]); // Blank spacer
+      worksheet.addRow([]);
       const headerRow = worksheet.addRow(headers);
       worksheet.getRow(3).height = 25;
 
-      // Style Headers
       headerRow.eachCell((cell, colNum) => {
         cell.font = { name: "Segoe UI", size: 10, bold: true, color: { argb: "1E293B" } };
         cell.alignment = { horizontal: colNum === 1 ? "left" : "center", vertical: "middle" };
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "F1F5F9" } // Slate 100 
-        };
-        cell.border = {
-          bottom: { style: "medium", color: { argb: "CBD5E1" } },
-          top: { style: "thin", color: { argb: "E2E8F0" } }
-        };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "F1F5F9" } };
+        cell.border = { bottom: { style: "medium", color: { argb: "CBD5E1" } }, top: { style: "thin", color: { argb: "E2E8F0" } } };
       });
 
-      // 3. Add Rows & Apply Conditional Formatting Profiles
       filteredActiveMembers.forEach((member) => {
         let annualTotal = 0;
         let totalPossibleDays = 0;
@@ -179,45 +134,39 @@ export default function Devotion() {
           const monthStr = `${currentYear}-${String(idx + 1).padStart(2, '0')}`;
           const record = scores.find(s => s.member_id === member.id && s.tracking_month === monthStr);
           const monthScore = record ? record.score : 0;
-          
           annualTotal += monthScore;
           totalPossibleDays += getDaysInMonth(monthStr);
           rowData.push(monthScore > 0 ? monthScore : "-");
         });
 
         const attendancePct = totalPossibleDays > 0 ? (annualTotal / totalPossibleDays) : 0;
-
         rowData.push(annualTotal);
-        rowData.push(attendancePct); // Raw fractional decimal to format natively as percentage
+        rowData.push(attendancePct);
 
         const insertedRow = worksheet.addRow(rowData);
         worksheet.getRow(insertedRow.number).height = 22;
 
-        // Base cell font and border formatting
         insertedRow.eachCell((cell, colNum) => {
           cell.font = { name: "Segoe UI", size: 10, color: { argb: "334155" } };
           cell.border = { bottom: { style: "thin", color: { argb: "F1F5F9" } } };
-          
           if (colNum === 1) {
             cell.alignment = { horizontal: "left", vertical: "middle" };
             cell.font = { name: "Segoe UI", size: 10, bold: true, color: { argb: "0F172A" } };
-          } else if (colNum === 14) { // Annual Total
+          } else if (colNum === 14) {
             cell.alignment = { horizontal: "center", vertical: "middle" };
             cell.font = { name: "Segoe UI", size: 10, bold: true, color: { argb: "B45309" } };
             cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FEF3C7" } };
-          } else if (colNum === 15) { // Percentage Column
+          } else if (colNum === 15) {
             cell.alignment = { horizontal: "center", vertical: "middle" };
             cell.numFmt = "0.0%";
-            
-            // Styled KPI indicators
             if (attendancePct >= 0.85) {
-              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D1FAE5" } }; // Green
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D1FAE5" } };
               cell.font = { color: { argb: "065F46" }, bold: true };
             } else if (attendancePct >= 0.50) {
-              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEDD5" } }; // Orange
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEDD5" } };
               cell.font = { color: { argb: "9A3412" }, bold: true };
             } else if (attendancePct > 0) {
-              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FEE2E2" } }; // Red
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FEE2E2" } };
               cell.font = { color: { argb: "991B1B" }, bold: true };
             }
           } else {
@@ -226,15 +175,13 @@ export default function Devotion() {
         });
       });
 
-      // Explicit Column Sizing
       worksheet.columns.forEach((col, idx) => {
-        if (idx === 0) col.width = 24; // Name column wide
-        else if (idx === 13) col.width = 14; // Total column wide
-        else if (idx === 14) col.width = 15; // Percent column wide
-        else col.width = 7; // Month score column narrow
+        if (idx === 0) col.width = 24;
+        else if (idx === 13) col.width = 14;
+        else if (idx === 14) col.width = 15;
+        else col.width = 7;
       });
 
-      // Write and deliver file
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       saveAs(blob, `Church_Devotion_Roster_${currentYear}.xlsx`);
@@ -257,29 +204,32 @@ export default function Devotion() {
   return (
     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col h-full">
       {/* Header Panel */}
-      <div className="p-4 md:p-6 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-slate-50">
+      {/* FIX: tightened padding/gaps on mobile (p-3/gap-2), restored to original p-4 md:p-6/gap-4 at md+ */}
+      <div className="p-3 md:p-6 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2 md:gap-4 bg-slate-50">
         <div>
-          <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
+          {/* FIX: smaller title/description text on mobile only */}
+          <h2 className="text-sm md:text-lg font-black text-slate-800 flex items-center gap-2">
             <FaBook className="text-amber-500" /> Devotion Dashboard
           </h2>
-          <p className="text-xs font-medium text-slate-500 mt-1">Track monthly and annual completion metrics.</p>
+          <p className="hidden md:block text-xs font-medium text-slate-500 mt-1">Track monthly and annual completion metrics.</p>
         </div>
         
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider whitespace-nowrap">Target Month:</span>
+        {/* FIX: row layout + smaller gap on mobile so Target Month/Export/Manage Pipeline take less vertical space */}
+        <div className="flex flex-row flex-wrap sm:flex-row items-stretch sm:items-center gap-1.5 md:gap-3 w-full lg:w-auto">
+          <div className="flex items-center gap-1.5 md:gap-2 bg-white border border-slate-200 rounded-xl px-2 md:px-3 py-1 md:py-1.5 shadow-sm">
+            <span className="text-[9px] md:text-[10px] font-extrabold text-slate-400 uppercase tracking-wider whitespace-nowrap">Month:</span>
             <input 
               type="month" 
               value={selectedMonth} 
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-transparent border-none text-xs font-bold text-slate-700 focus:outline-none cursor-pointer" 
+              className="bg-transparent border-none text-[11px] md:text-xs font-bold text-slate-700 focus:outline-none cursor-pointer" 
             />
           </div>
 
           <button
             onClick={exportToExcel}
             disabled={exporting || filteredActiveMembers.length === 0}
-            className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+            className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 rounded-xl px-2.5 md:px-4 py-1.5 md:py-2 text-[11px] md:text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 md:gap-2 cursor-pointer disabled:cursor-not-allowed"
           >
             {exporting ? <FaSpinner className="animate-spin" /> :   <FaFileExcel className="text-sm sm:text-base text-emerald-600" />} 
             <span>Export</span>
@@ -287,28 +237,30 @@ export default function Devotion() {
 
           <button 
             onClick={() => { setRosterSearchQuery(""); setShowRosterModal(true); }}
-            className="bg-white border border-slate-200 hover:border-amber-300 rounded-xl px-4 py-2 text-xs font-bold text-slate-700 hover:text-amber-600 transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+            className="bg-white border border-slate-200 hover:border-amber-300 rounded-xl px-2.5 md:px-4 py-1.5 md:py-2 text-[11px] md:text-xs font-bold text-slate-700 hover:text-amber-600 transition-all shadow-sm flex items-center justify-center gap-1.5 md:gap-2 cursor-pointer"
           >
-            <FaUserCog /> Manage Pipeline
+            <FaUserCog /> <span className="hidden xs:inline">Manage Pipeline</span><span className="xs:hidden">Manage</span>
           </button>
         </div>
       </div>
 
       {/* TABS */}
-      <div className="flex border-b border-slate-200 px-4 md:px-6 pt-4 gap-1 sm:gap-2">
+      {/* FIX: tighter top padding on mobile */}
+      <div className="flex border-b border-slate-200 px-3 md:px-6 pt-2 md:pt-4 gap-1 sm:gap-2">
         <button onClick={() => setActiveTab("monthly")}
-          className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer ${activeTab === "monthly" ? "border-amber-500 text-amber-600" : "border-transparent text-slate-400 hover:text-slate-600"}`}>
+          className={`flex items-center gap-1.5 sm:gap-2 px-2.5 md:px-4 py-1.5 md:py-2.5 text-[11px] md:text-sm font-bold border-b-2 transition-all cursor-pointer ${activeTab === "monthly" ? "border-amber-500 text-amber-600" : "border-transparent text-slate-400 hover:text-slate-600"}`}>
           <FaTable /> <span>Monthly Grid</span>
         </button>
         <button onClick={() => setActiveTab("annual")}
-          className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer ${activeTab === "annual" ? "border-amber-500 text-amber-600" : "border-transparent text-slate-400 hover:text-slate-600"}`}>
+          className={`flex items-center gap-1.5 sm:gap-2 px-2.5 md:px-4 py-1.5 md:py-2.5 text-[11px] md:text-sm font-bold border-b-2 transition-all cursor-pointer ${activeTab === "annual" ? "border-amber-500 text-amber-600" : "border-transparent text-slate-400 hover:text-slate-600"}`}>
           <FaCalendarAlt /> <span>Annual Roster</span>
         </button>
       </div>
 
       {/* Search Filter input */}
-      <div className="p-4 border-b border-slate-100 bg-white">
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center gap-2 max-w-md">
+      {/* FIX: tighter padding on mobile (p-2 instead of p-4) */}
+      <div className="p-2 md:p-4 border-b border-slate-100 bg-white sticky top-0 z-20 md:static md:z-auto">
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 md:p-2.5 flex items-center gap-2 max-w-md">
           <FaSearch className="text-slate-400 text-xs ml-1" />
           <input 
             type="text" placeholder="Search actively tracked members..." 
@@ -387,6 +339,7 @@ export default function Devotion() {
             </div>
 
             {/* Mobile Adaptive Card View (Visible only on Mobile viewports) */}
+            {/* FIX: reduced p-4 -> p-3 and gap-3 -> gap-2 so each card takes noticeably less vertical space */}
             <div className="block md:hidden divide-y divide-slate-100">
               {filteredActiveMembers.map((member) => {
                 const record = scores.find(s => s.member_id === member.id && s.tracking_month === selectedMonth);
@@ -394,7 +347,7 @@ export default function Devotion() {
                 const percent = (currentScore / daysInMonth) * 100;
 
                 return (
-                  <div key={member.id} className="p-4 bg-white flex flex-col gap-3">
+                  <div key={member.id} className="p-3 bg-white flex flex-col gap-2">
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-sm text-slate-800">{member.first_name} {member.last_name}</span>
                       <div>
@@ -410,7 +363,7 @@ export default function Devotion() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    <div className="flex items-center justify-between bg-slate-50 p-1.5 rounded-xl border border-slate-100">
                       <span className="text-xs text-slate-500 font-medium">Monthly Score:</span>
                       <div className="flex items-center gap-1.5">
                         <input 
@@ -528,4 +481,3 @@ export default function Devotion() {
     </div>
   );
 }
-

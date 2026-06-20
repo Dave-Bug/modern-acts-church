@@ -74,16 +74,17 @@ const CustomTooltip = ({ active, payload, label, viewType, onDrillDown }) => {
 
 // Summary Card
 const SummaryCard = ({ icon: Icon, label, value, subtext, color }) => (
-  <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 group cursor-pointer"
-       onClick={() => {}}>
-    <div className="flex items-start justify-between mb-3">
-      <div className={`p-3 rounded-xl ${color.bg} ${color.text} group-hover:scale-110 transition-transform duration-300`}>
-        <Icon size={22} />
+  <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-all duration-300 group cursor-pointer">
+    <div className="flex items-center gap-2.5">
+      <div className={`p-2 rounded-lg ${color.bg} ${color.text} group-hover:scale-110 transition-transform duration-300 flex-shrink-0`}>
+        <Icon size={16} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider leading-none">{label}</p>
+        <p className="text-xl font-black text-slate-800 leading-none mt-1">{value}</p>
+        {subtext && <p className="text-[10px] text-slate-400 mt-0.5 font-medium leading-none">{subtext}</p>}
       </div>
     </div>
-    <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">{label}</p>
-    <p className="text-3xl md:text-4xl font-black text-slate-800 leading-none tracking-tight">{value}</p>
-    {subtext && <p className="text-xs text-slate-400 mt-2 font-medium">{subtext}</p>}
   </div>
 );
 
@@ -366,15 +367,19 @@ export default function UsherAttendanceDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 text-slate-900 pb-8">
-
       {/* Top Navigation */}
       <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/60">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+      <div className="fixed top-4 left-4 z-50">
+        <Link
+          to="/ministries/usher"
+          className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-2 rounded-xl text-sm font-medium text-slate-700 hover:text-blue-600 transition-colors"
+        >
+          <FaHome />
+          Back
+        </Link>
+      </div>
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-7 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link to="/ministries/usher"
-              className="flex items-center justify-center bg-slate-100 hover:bg-blue-50 w-10 h-10 rounded-xl text-slate-500 hover:text-blue-600 transition-all duration-200">
-              <FaHome size={18} />
-            </Link>
             <div>
               <h1 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">
                 Attendance <span className="text-blue-600">Overview</span>
@@ -400,19 +405,41 @@ export default function UsherAttendanceDashboard() {
       <div className="max-w-[1400px] mx-auto  px-4 sm:px-6 lg:px-8 pt-6 flex flex-col gap-6">
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
-          <SummaryCard icon={FaUsers} label="Total Records" value={totalRecords} color={{ bg: "bg-blue-50", text: "text-blue-600" }} />
-          <SummaryCard icon={FaCheckCircle} label="Present" value={totalPresent} subtext={`${attendanceRate}% attendance rate`} color={{ bg: "bg-emerald-50", text: "text-emerald-600" }} />
-          <SummaryCard icon={FaStar} label="1st Timers" value={firstTimerCount} color={{ bg: "bg-amber-50", text: "text-amber-500" }} />
-          <SummaryCard icon={FaUserClock} label="2nd Timers" value={secondTimerCount} color={{ bg: "bg-purple-50", text: "text-purple-600" }} />
-          <div className="col-span-2 lg:col-span-1 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-5 shadow-lg text-white">
-            <p className="text-blue-100 text-xs font-bold uppercase tracking-wider mb-1">Attendance Rate</p>
-            <p className="text-4xl font-black leading-none">{attendanceRate}%</p>
-            <div className="mt-3 w-full bg-blue-800/50 rounded-full h-2">
-              <div className="bg-white rounded-full h-2 transition-all duration-1000" style={{ width: `${attendanceRate}%` }} />
-            </div>
-          </div>
-        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 md:gap-3">
+  <SummaryCard icon={FaUsers} label="Total Records" value={totalRecords} color={{ bg: "bg-blue-50", text: "text-blue-600" }} />
+  <SummaryCard icon={FaCheckCircle} label="Present" value={totalPresent}  color={{ bg: "bg-emerald-50", text: "text-emerald-600" }} />
+  <SummaryCard icon={FaStar} label="1st Timers" value={firstTimerCount} color={{ bg: "bg-amber-50", text: "text-amber-500" }} />
+  <SummaryCard icon={FaUserClock} label="2nd Timers" value={secondTimerCount} color={{ bg: "bg-purple-50", text: "text-purple-600" }} />
+  
+  {/* Compact Attendance Rate Card */}
+  <div className="col-span-2 lg:col-span-1 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-3 shadow-lg text-white flex items-center gap-3">
+    <div className="flex-1 min-w-0">
+      <p className="text-blue-100 text-[10px] font-bold uppercase tracking-wider leading-none">Attendance Rate</p>
+      <p className="text-2xl font-black leading-none mt-1">{attendanceRate}%</p>
+    </div>
+    <div className="w-10 h-10 relative flex-shrink-0">
+      <svg className="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
+        <path
+          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+          fill="none"
+          stroke="rgba(255,255,255,0.2)"
+          strokeWidth="4"
+        />
+        <path
+          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+          fill="none"
+          stroke="white"
+          strokeWidth="4"
+          strokeDasharray={`${attendanceRate}, 100`}
+          strokeLinecap="round"
+        />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold">
+        {attendanceRate}
+      </span>
+    </div>
+  </div>
+</div>
 
         {/* Filter Bar */}
         <div className="bg-white border border-slate-200 rounded-2xl p-4 md:p-5 shadow-sm">

@@ -254,7 +254,7 @@ export default function Navbar() {
             
             <button 
               onClick={() => setShowAuthModal(false)}
-              className="absolute top-4 right-4 z-50 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer text-base bg-slate-100 p-1.5 rounded-xl hover:bg-slate-200"
+              className="absolute right-4 z-50 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer text-base bg-slate-100 p-1.5 rounded-xl hover:bg-slate-200"
               aria-label="Dismiss Login Modal"
             >
               <FaTimes />
