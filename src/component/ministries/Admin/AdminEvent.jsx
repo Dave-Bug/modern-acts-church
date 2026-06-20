@@ -270,7 +270,7 @@ export default function AdminEvent() {
                     onClick={() => handleDateClick(cellDate)}
                     className={`aspect-square relative flex flex-col items-center justify-center rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold transition-all cursor-pointer border min-h-[32px] sm:min-h-[40px] ${
                       isSelected 
-                        ? "bg-blue-600 border-blue-600 text-white shadow-sm" 
+                        ? "bg-blue-600 border-blue-600 text-emerald-500 shadow-sm" 
                         : hasEvents 
                         ? "bg-blue-50/80 border-blue-200 text-blue-700 hover:bg-blue-100" 
                         : "bg-slate-50/50 border-transparent text-slate-700 hover:bg-slate-100"
@@ -289,7 +289,7 @@ export default function AdminEvent() {
               <span className="text-[9px] sm:text-[10px] font-semibold text-slate-400 italic">Click calendar day to inspect events</span>
               <button 
                 onClick={() => { setModalMode("create"); setIsModalOpen(true); }}
-                className="text-[10px] sm:text-xs bg-slate-900 text-white font-black px-2 py-1 rounded-lg hover:bg-slate-800 flex items-center gap-1 active:scale-95 transition-transform"
+                className="text-[10px] sm:text-xs bg-slate-900 font-black px-2 py-1 rounded-lg hover:bg-slate-800 flex items-center gap-1 active:scale-95 transition-transform"
               >
                 <FaPlus className="text-[8px]" /> Force Add
               </button>
@@ -494,7 +494,7 @@ export default function AdminEvent() {
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addChecklistItem(); } }}
                       className="w-full text-xs font-medium text-slate-800 border border-slate-200 bg-white rounded-lg px-2.5 py-1.5 focus:outline-none"
                     />
-                    <button type="button" onClick={addChecklistItem} className="bg-slate-800 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 flex-shrink-0 cursor-pointer active:scale-95 transition-transform"><FaPlus /> Add</button>
+                    <button type="button" onClick={addChecklistItem} className="bg-slate-800 font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 flex-shrink-0 cursor-pointer active:scale-95 transition-transform"><FaPlus /> Add</button>
                   </div>
 
                   {itemsList.length > 0 && (
@@ -520,7 +520,7 @@ export default function AdminEvent() {
 
                 <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                   <button type="button" onClick={resetFormModal} className="text-xs font-bold px-4 py-2 rounded-xl text-slate-500 hover:bg-slate-100 cursor-pointer active:scale-95 transition-transform">Cancel</button>
-                  <button type="submit" disabled={!eventTitle.trim()} className="text-xs font-black px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all disabled:opacity-40 cursor-pointer active:scale-95 transition-transform">Save Event</button>
+                  <button type="submit" disabled={!eventTitle.trim()} className="text-xs font-black px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-sm transition-all disabled:opacity-40 cursor-pointer active:scale-95 transition-transform">Save Event</button>
                 </div>
               </form>
             )}

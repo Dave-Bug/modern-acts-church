@@ -214,66 +214,73 @@ export default function LifeGroupChecking() {
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col h-full w-full">
-      {/* Header Panel */}
-      <div className="p-3 md:p-4 border-b border-slate-100 flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3 bg-slate-50">
-        <div>
-          <h2 className="text-sm md:text-base font-black text-slate-800 flex items-center gap-2">
-            <FaUsers className="text-blue-500" /> Life Group Checking
-          </h2>
-          <p className="text-[11px] font-medium text-slate-500 mt-0.5">Track weekly attendance and summaries.</p>
+      {/* FIX: Header + Tabs + Search + List are now ALL inside this single overflow-auto container,
+          matching the same pattern applied to Devotion.jsx. Header/Tabs scroll away with the list
+          on mobile, while the Search bar uses sticky top-0 to pin itself at the top of THIS scroll
+          container once you scroll past the header. Desktop layout is unaffected. */}
+      <div className="flex-1 overflow-auto">
+
+        {/* Header Panel — now scrolls away with the rest of the content */}
+        <div className="p-3 md:p-4 border-b border-slate-100 flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3 bg-slate-50">
+          <div>
+            <h2 className="text-sm md:text-base font-black text-slate-800 flex items-center gap-2">
+              <FaUsers className="text-blue-500" /> Life Group Checking
+            </h2>
+            <p className="text-[11px] font-medium text-slate-500 mt-0.5">Track weekly attendance and summaries.</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full lg:w-auto">
+            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-sm">
+              <span className="text-[9px] font-bold text-slate-400 uppercase shrink-0">Target:</span>
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-full bg-transparent text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
+              />
+            </div>
+            <button
+              onClick={() => { setRosterSearchQuery(""); setShowRosterModal(true); }}
+              className="w-full bg-white border border-slate-200 hover:border-blue-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-blue-600 transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <FaUserCog /> Manage Roster
+            </button>
+            <button
+              onClick={exportToExcel}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 rounded-xl px-3 py-1.5 text-xs font-bold text-emerald-600 transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <FaFileExcel /> Export Excel
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full lg:w-auto">
-          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-sm">
-            <span className="text-[9px] font-bold text-slate-400 uppercase shrink-0">Target:</span>
+        {/* TABS — also scrolls away with the header now */}
+        <div className="flex border-b border-slate-200 px-3 md:px-4 pt-1 gap-1 bg-white">
+          <button onClick={() => setActiveTab("monthly")}
+            className={`flex items-center gap-1.5 px-2 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer ${activeTab === "monthly" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-400 hover:text-slate-600"}`}>
+            <FaTable /> <span>Weekly Detail</span>
+          </button>
+          <button onClick={() => setActiveTab("annual")}
+            className={`flex items-center gap-1.5 px-2 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer ${activeTab === "annual" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-400 hover:text-slate-600"}`}>
+            <FaCalendarAlt /> <span>Annual Summary</span>
+          </button>
+        </div>
+
+        {/* Search Bar — FIX: sticky top-0 now pins relative to the SAME scroll container as
+            the header/tabs/list above, so once you scroll past the header on mobile, this
+            snaps to the very top and stays there while the list scrolls beneath it.
+            md:static md:z-auto cancels the sticky behavior on desktop, where it was already fine. */}
+        <div className="p-3 border-b border-slate-100 bg-white sticky top-0 z-20 md:static md:z-auto">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 flex items-center gap-2 w-full max-w-sm">
+            <FaSearch className="text-slate-400 text-xs ml-1" />
             <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-full bg-transparent text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
+              type="text" placeholder="Search tracked members..."
+              value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-transparent text-xs font-medium text-slate-800 focus:outline-none"
             />
           </div>
-          <button
-            onClick={() => { setRosterSearchQuery(""); setShowRosterModal(true); }}
-            className="w-full bg-white border border-slate-200 hover:border-blue-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-blue-600 transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
-          >
-            <FaUserCog /> Manage Roster
-          </button>
-          <button
-            onClick={exportToExcel}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 rounded-xl px-3 py-1.5 text-xs font-bold text-emerald-600 transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
-          >
-            <FaFileExcel /> Export Excel
-          </button>
         </div>
-      </div>
 
-      {/* TABS */}
-      <div className="flex border-b border-slate-200 px-3 md:px-4 pt-1 gap-1">
-        <button onClick={() => setActiveTab("monthly")}
-          className={`flex items-center gap-1.5 px-2 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer ${activeTab === "monthly" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-400 hover:text-slate-600"}`}>
-          <FaTable /> <span>Weekly Detail</span>
-        </button>
-        <button onClick={() => setActiveTab("annual")}
-          className={`flex items-center gap-1.5 px-2 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer ${activeTab === "annual" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-400 hover:text-slate-600"}`}>
-          <FaCalendarAlt /> <span>Annual Summary</span>
-        </button>
-      </div>
-
-      {/* Search Bar */}
-      <div className="p-3 border-b border-slate-100">
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 flex items-center gap-2 w-full max-w-sm">
-          <FaSearch className="text-slate-400 text-xs ml-1" />
-          <input
-            type="text" placeholder="Search tracked members..."
-            value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-transparent text-xs font-medium text-slate-800 focus:outline-none"
-          />
-        </div>
-      </div>
-
-      {/* Main Responsive Viewport Area */}
-      <div className="flex-1 overflow-auto">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-40 text-slate-400">
             <FaSpinner className="animate-spin text-xl mb-2" />

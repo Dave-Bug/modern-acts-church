@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { FaHome, FaCalendarAlt, FaClipboardList, FaUserShield } from "react-icons/fa";
+import { FaHome, FaCalendarAlt, FaClipboardList, FaUserShield, FaLock } from "react-icons/fa";
 import { supabase } from "../../../Services/supabase";
 
 export default function AdministrationDashboardHub() {
@@ -9,25 +9,48 @@ export default function AdministrationDashboardHub() {
   const [totalTasks, setTotalTasks] = useState(0);
   const [totalPendingUsers, setTotalPendingUsers] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    // 🔒 Security Check: Read status directly from church_session_user
+    const verifyAdminClearance = () => {
+      try {
+        const storedUser = localStorage.getItem("church_session_user");
+        
+        if (!storedUser) {
+          setIsAdmin(false);
+          return;
+        }
+
+        const parsedUser = JSON.parse(storedUser);
+        
+        // Check status field directly from localStorage (case-insensitive)
+        if (parsedUser.status && parsedUser.status.toLowerCase() === "admin") {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
+
+      } catch (err) {
+        console.error("Security check failed:", err);
+        setIsAdmin(false);
+      }
+    };
+
     async function getQuickStats() {
       try {
         setLoading(true);
 
-        // 1. Fetch count for events from administration_logs table where type is 'event'
         const { count: eventCount, error: eventError } = await supabase
           .from("administration_logs")
           .select("*", { count: "exact", head: true })
           .eq("type", "event");
 
-        // 2. Fetch count for tasks from administration_logs table where type is 'task'
         const { count: taskCount, error: taskError } = await supabase
           .from("administration_logs")
           .select("*", { count: "exact", head: true })
           .eq("type", "task");
 
-        // 3. 🛡️ Fetch count for new incoming registrations stuck on 'Pending' access status
         const { count: pendingCount, error: pendingError } = await supabase
           .from("church_auth")
           .select("*", { count: "exact", head: true })
@@ -43,6 +66,8 @@ export default function AdministrationDashboardHub() {
         setLoading(false);
       }
     }
+
+    verifyAdminClearance();
     getQuickStats();
   }, []);
 
@@ -114,26 +139,45 @@ export default function AdministrationDashboardHub() {
             </span>
           </button>
 
-          {/* Module 3: Account Management Card */}
+          {/* Module 3: Account Management Card (Restricted) */}
           <button
-            onClick={() => navigate("/ministries/administration/accounts")}
-            className="bg-white/80 backdrop-blur border border-slate-200 rounded-xl p-5 sm:p-6 text-left hover:shadow-md hover:-translate-y-1 transition-all duration-300 group active:scale-[0.98] sm:col-span-2 lg:col-span-1"
+            onClick={() => {
+              if (isAdmin) {
+                navigate("/ministries/administration/accounts");
+              } else {
+                alert("Security Clearance Denied: Only accounts with 'Admin' status can manage system accounts.");
+              }
+            }}
+            className={`relative bg-white/80 backdrop-blur border border-slate-200 rounded-xl p-5 sm:p-6 text-left transition-all duration-300 sm:col-span-2 lg:col-span-1 ${
+              isAdmin 
+                ? "hover:shadow-md hover:-translate-y-1 group active:scale-[0.98] cursor-pointer" 
+                : "opacity-70 cursor-not-allowed bg-slate-50/50"
+            }`}
           >
-            <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-lg mb-4 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+            {!isAdmin && (
+              <div className="absolute top-5 right-5 text-slate-300" title="Admin clearance required">
+                <FaLock className="text-lg" />
+              </div>
+            )}
+
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg mb-4 transition-colors ${
+              isAdmin ? "bg-indigo-100 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white" : "bg-slate-200 text-slate-400"
+            }`}>
               <FaUserShield />
             </div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 mb-1">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 mb-1 flex items-center gap-2">
               Account Gatekeeper
             </h2>
             <p className="text-slate-500 text-xs sm:text-sm leading-relaxed mb-3">
               Review incoming profile logs, grant role access clearance parameters (Admin/Editor/Viewer), and approve secure registration fields.
             </p>
             <span className={`text-[10px] sm:text-xs font-semibold inline-block px-2.5 py-1 rounded-md ${
+              !isAdmin ? "bg-slate-100 text-slate-400" :
               totalPendingUsers > 0 
                 ? "bg-amber-50 text-amber-600 font-bold border border-amber-100 animate-pulse" 
                 : "bg-indigo-50 text-indigo-600"
             }`}>
-              {loading ? "Counting..." : `${totalPendingUsers} Pending Requests`}
+              {loading ? "Counting..." : !isAdmin ? "Restricted Access" : `${totalPendingUsers} Pending Requests`}
             </span>
           </button>
 

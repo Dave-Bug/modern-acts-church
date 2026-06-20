@@ -22,7 +22,7 @@ import Login from "../../Pages/Login"; // Adjust relative path if needed
 // 🔑 "matchKey" properties match the text patterns in your database rows
 const ministries = [
   { name: "Media Team", matchKey: "Multimedia", icon: FaVideo, desc: "Livestream & media production.", color: "blue", path: "/ministries/media" },
-  { name: "Worship Team", matchKey: "Worship Team", icon: FaMusic, desc: "Leads worship & praise.", color: "sky", path: "/ministries/worship" },
+  { name: "Worship Team", matchKey: "Worship Team", icon: FaMusic, desc: "Leads worship & praise.", color: "sky", path: "/ministries/worshipteam" },
   { name: "Usher", matchKey: "Usher", icon: FaHandsHelping, desc: "Welcomes attendees.", color: "indigo", path: "/ministries/usher" },
   { name: "Finance", matchKey: "Finance", icon: FaPiggyBank, desc: "Handles church giving.", color: "slate", path: "/ministries/finance" },
   { name: "Admin", matchKey: "Admin Department", icon: FaUserCog, desc: "Church coordination.", color: "blue", path: "/ministries/administration" },

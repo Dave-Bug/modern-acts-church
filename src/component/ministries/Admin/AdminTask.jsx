@@ -216,7 +216,7 @@ export default function AdminTask() {
 
           <button
             onClick={() => { setModalMode("create"); setIsModalOpen(true); }}
-            className="sm:self-end bg-slate-900 text-white font-black text-[11px] sm:text-xs px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl hover:bg-slate-800 transition-all flex items-center gap-2 cursor-pointer shadow-sm active:scale-95"
+            className="sm:self-end bg-slate-900 font-black text-[11px] sm:text-xs px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl hover:bg-slate-800 transition-all flex items-center gap-2 cursor-pointer shadow-sm active:scale-95"
           >
             <FaPlus /> Create Task Entry
           </button>
@@ -448,7 +448,7 @@ export default function AdminTask() {
                     >
                       Edit Details
                     </button>
-                    <button onClick={resetFormModal} className="text-[10px] sm:text-xs font-black px-4 sm:px-5 py-1.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 cursor-pointer active:scale-95 transition-transform">
+                    <button onClick={resetFormModal} className="text-[10px] sm:text-xs font-black px-4 sm:px-5 py-1.5 bg-slate-900 rounded-xl hover:bg-slate-800 cursor-pointer active:scale-95 transition-transform">
                       Finish Review
                     </button>
                   </div>
@@ -516,7 +516,7 @@ export default function AdminTask() {
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addChecklistItem(); } }}
                       className="w-full text-xs font-medium text-slate-800 border border-slate-200 bg-white rounded-lg px-2.5 py-1.5 focus:outline-none"
                     />
-                    <button type="button" onClick={addChecklistItem} className="bg-slate-800 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 flex-shrink-0 cursor-pointer active:scale-95 transition-transform"><FaPlus /> Include</button>
+                    <button type="button" onClick={addChecklistItem} className="bg-slate-800 font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 flex-shrink-0 cursor-pointer active:scale-95 transition-transform"><FaPlus /> Include</button>
                   </div>
 
                   {itemsList.length > 0 && (
@@ -544,7 +544,7 @@ export default function AdminTask() {
 
                 <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                   <button type="button" onClick={resetFormModal} className="text-xs font-bold px-4 py-2 rounded-xl text-slate-500 hover:bg-slate-100 cursor-pointer active:scale-95 transition-transform">Cancel</button>
-                  <button type="submit" disabled={!taskTitle.trim()} className="text-xs font-black px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-all disabled:opacity-40 cursor-pointer active:scale-95 transition-transform">
+                  <button type="submit" disabled={!taskTitle.trim()} className="text-xs font-black px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all disabled:opacity-40 cursor-pointer active:scale-95 transition-transform">
                     {modalMode === "edit" ? "Update Task Entry" : "Save Task Line"}
                   </button>
                 </div>
