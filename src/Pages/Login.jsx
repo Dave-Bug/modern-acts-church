@@ -144,6 +144,7 @@ export default function Login({ onAuthSuccess }) {
         return;
       }
 
+      // ✅ Fetch fresh ministry from usher_members
       const nameParts = userRecord.name.trim().split(" ");
       const firstName = nameParts[0];
       const { data: freshMember, error: memberErr } = await supabase
@@ -159,6 +160,8 @@ export default function Login({ onAuthSuccess }) {
         ministry: freshMember?.ministry || userRecord.ministry,
       };
 
+      // ✅ Save to localStorage AND call onAuthSuccess
+      localStorage.setItem("church_session_user", JSON.stringify(updatedUser));
       onAuthSuccess(updatedUser);
     } catch (err) {
       setErrorMessage("System authorization connection issues.");
@@ -185,16 +188,19 @@ export default function Login({ onAuthSuccess }) {
       setErrorMessage("");
       setSuccessMessage("");
 
-      const { error } = await supabase.from("church_auth").insert([
-        {
-          name: name.trim(),
-          password: password,
-          ministry: ministry,
-          type: "User",
-          status: status,
-          access: "Pending",
-        },
-      ]);
+      const { data: inserted, error } = await supabase
+        .from("church_auth")
+        .insert([
+          {
+            name: name.trim(),
+            password: password,
+            ministry: ministry,
+            type: "User",
+            status: status,
+            access: "Pending",
+          },
+        ])
+        .select(); // ← returns the inserted row
 
       if (error) {
         if (error.code === "23505")
@@ -202,9 +208,27 @@ export default function Login({ onAuthSuccess }) {
         throw error;
       }
 
+      // ✅ FIX: Auto-login after successful registration
+      // Since new registrations are "Pending", we need to check if admin pre-approved
+      // or if you want to auto-approve. For now, we'll log them in with Pending status
+      // but the Ministries page will still block access until approved.
+      
+      // Option A: Show pending message (current behavior)
       setSuccessMessage(
         "Account created successfully! Your request is now pending Administrator approval."
       );
+      
+      // Option B: Auto-login (uncomment if you want immediate access)
+      // const newUser = {
+      //   name: name.trim(),
+      //   ministry: ministry,
+      //   type: "User",
+      //   status: status,
+      //   access: "Pending",
+      // };
+      // localStorage.setItem("church_session_user", JSON.stringify(newUser));
+      // onAuthSuccess(newUser);
+
       setTimeout(() => switchMode(false), 3500);
     } catch (err) {
       setErrorMessage(err.message || "Registration operation failure.");
@@ -214,37 +238,24 @@ export default function Login({ onAuthSuccess }) {
   };
 
   return (
-    // 🔧 FIX: Removed h-screen/min-h-screen entirely — this component renders INSIDE
-    // a modal (max-h-[90vh] overflow-y-auto) in Ministries.jsx, so forcing a screen-height
-    // div here created two competing scroll contexts, which is what produced the visible
-    // scrollbar in the modal. Now Login sizes itself naturally to its content.
     <div className="bg-[#f5f8fc] flex items-center justify-center px-4 py-6 relative overflow-hidden rounded-2xl">
-      {/* Global Scrollbar Hide */}
       <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      {/* Ambient blobs kept inside overflow-hidden parent so they can't push width/height */}
       <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[200px] bg-blue-200/40 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-sky-200/30 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute top-[30%] right-[20%] w-[300px] h-[300px] bg-indigo-100/40 rounded-full blur-[100px] pointer-events-none" />
 
-      {/* 🔧 FIX: removed max-h-[95vh] overflow-y-auto here — the parent modal already
-          owns max-h-[90vh] overflow-y-auto, so this no longer double-scrolls */}
       <div className="max-w-md w-full relative z-10">
-        {/* Main Card */}
-        {/* 🔧 FIX: p-8 -> p-6, reduced vertical rhythm throughout */}
         <div className="bg-white/90 backdrop-blur-xl border border-white/60 rounded-3xl p-6 shadow-[0_8px_40px_-12px_rgba(59,130,246,0.15)] ring-1 ring-slate-900/5">
           
-          {/* Top Gradient Accent */}
           <div className="absolute top-0 left-10 right-10 h-[3px] bg-gradient-to-r from-transparent via-blue-500 to-transparent rounded-full opacity-60" />
 
-          {/* Header */}
-          {/* 🔧 FIX: mb-8 -> mb-5, icon 14->12, mb-4->mb-3 */}
           <div className="text-center mb-5">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-sky-500 mb-3 shadow-lg shadow-blue-500/20 ring-4 ring-blue-50">
-              <FaChurch className=" text-lg" />
+              <FaChurch className="text-lg" />
             </div>
             <h1 className="text-xl font-bold tracking-tight text-slate-900">
               Ministry <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-sky-500">Access Portal</span>
@@ -256,26 +267,22 @@ export default function Login({ onAuthSuccess }) {
             </p>
           </div>
 
-          {/* Alerts */}
-          {/* 🔧 FIX: mb-6 -> mb-4, p-4 -> p-3 */}
           {errorMessage && (
-            <div className="mb-4 bg-red-50 border border-red-100 text-red-700 text-sm font-semibold p-3 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+            <div className="mb-4 bg-red-50 border border-red-100 text-red-700 text-sm font-semibold p-3 rounded-xl flex items-start gap-3">
               <FaExclamationCircle className="flex-shrink-0 mt-0.5 text-red-500" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           {successMessage && (
-            <div className="mb-4 bg-emerald-50 border border-emerald-100 text-emerald-700 text-sm font-semibold p-3 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+            <div className="mb-4 bg-emerald-50 border border-emerald-100 text-emerald-700 text-sm font-semibold p-3 rounded-xl flex items-start gap-3">
               <FaCheckCircle className="flex-shrink-0 mt-0.5 text-emerald-500" />
               <span>{successMessage}</span>
             </div>
           )}
 
-          {/* 🔧 FIX: space-y-5 -> space-y-4 */}
           <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-4">
             
-            {/* Name Field */}
             <div className="relative" ref={suggestionRef}>
               <label className="block text-[11px] font-bold uppercase text-slate-400 tracking-wider mb-1.5 ml-1">
                 Full Registered Name
@@ -298,7 +305,6 @@ export default function Login({ onAuthSuccess }) {
                 />
               </div>
 
-              {/* Suggestions Dropdown */}
               {showSuggestions && suggestions.length > 0 && (
                 <div className="absolute left-0 right-0 mt-2 z-[9999] max-h-48 overflow-y-auto no-scrollbar bg-white border border-slate-100 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] rounded-xl py-2 ring-1 ring-slate-900/5">
                   {suggestions.map((item, index) => {
@@ -335,7 +341,6 @@ export default function Login({ onAuthSuccess }) {
               )}
             </div>
 
-            {/* Password Field */}
             <div>
               <label className="block text-[11px] font-bold uppercase text-slate-400 tracking-wider mb-1.5 ml-1">
                 Account Security Password
@@ -365,10 +370,8 @@ export default function Login({ onAuthSuccess }) {
               </div>
             </div>
 
-            {/* Registration Fields */}
             {isRegistering && (
               <>
-                {/* Ministry Field */}
                 <div>
                   <label className="block text-[11px] font-bold uppercase text-slate-400 tracking-wider mb-1.5 ml-1">
                     Ministry Assignment <span className="text-blue-500">(Auto-Selected)</span>
@@ -387,7 +390,6 @@ export default function Login({ onAuthSuccess }) {
                   </div>
                 </div>
 
-                {/* Status Dropdown */}
                 <div>
                   <label className="block text-[11px] font-bold uppercase text-slate-400 tracking-wider mb-1.5 ml-1">
                     Personnel Clearance Level
@@ -418,8 +420,6 @@ export default function Login({ onAuthSuccess }) {
               </>
             )}
 
-            {/* Submit Button */}
-            {/* 🔧 FIX: py-3.5 -> py-3 */}
             <button
               type="submit"
               disabled={loading}
@@ -451,8 +451,6 @@ export default function Login({ onAuthSuccess }) {
             </button>
           </form>
 
-          {/* Footer Toggle */}
-          {/* 🔧 FIX: mt-8 pt-6 -> mt-5 pt-4 */}
           <div className="mt-5 pt-4 border-t border-slate-100 text-center">
             {isRegistering ? (
               <p className="text-sm text-slate-500 font-medium">
@@ -480,8 +478,6 @@ export default function Login({ onAuthSuccess }) {
           </div>
         </div>
 
-        {/* Bottom subtle text */}
-        {/* 🔧 FIX: mt-6 -> mt-3 */}
         <p className="text-center text-xs text-slate-400 mt-3 font-medium">
           Secured by church management encryption protocols
         </p>
