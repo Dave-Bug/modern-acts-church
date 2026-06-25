@@ -18,21 +18,50 @@ export default function Finance() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Quick Report toggle: "monthly" | "annual"
   const [reportView, setReportView] = useState("monthly");
   const [selectedReportMonth, setSelectedReportMonth] = useState(getCurrentMonthString());
 
-  // Modal state
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
-  // Track editing row variables
   const [editingId, setEditingId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
+
+  const [quickAmount, setQuickAmount] = useState("");
+  const [quickCategory, setQuickCategory] = useState("Offering");
+  const [quickDate, setQuickDate] = useState(new Date().toISOString().split('T')[0]); 
+  const [quickDescription, setQuickDescription] = useState("");
+  const [quickSubmitting, setQuickSubmitting] = useState(false);
+  const [quickExistingId, setQuickExistingId] = useState(null);
 
   useEffect(() => {
     fetchFinancialData();
   }, []);
+
+  // Auto-check for existing record when category, date, or transactions change
+  useEffect(() => {
+    checkExistingQuickAdd();
+  }, [quickCategory, quickDate, transactions]);
+
+  function checkExistingQuickAdd() {
+    const dbCategory = quickCategory === "Offering" ? "Basket" : quickCategory;
+
+    const existing = transactions.find(t => 
+      t.date === quickDate && 
+      t.transaction_type === "Income" &&
+      t.category === dbCategory
+    );
+
+    if (existing) {
+      setQuickAmount(existing.amount.toString());
+      setQuickDescription(existing.description || quickCategory);
+      setQuickExistingId(existing.id);
+    } else {
+      setQuickAmount("");
+      setQuickDescription("");
+      setQuickExistingId(null);
+    }
+  }
 
   async function fetchFinancialData() {
     try {
@@ -58,6 +87,52 @@ export default function Finance() {
     }
   }
 
+  const handleQuickAdd = async (e) => {
+    e.preventDefault();
+    if (!quickAmount || parseFloat(quickAmount) <= 0) {
+      alert("Please enter a valid amount.");
+      return;
+    }
+    try {
+      setQuickSubmitting(true);
+      const dbCategory = quickCategory === "Offering" ? "Basket" : quickCategory;
+
+      const payload = {
+        date: quickDate,
+        transaction_type: "Income",
+        category: dbCategory,
+        amount: parseFloat(quickAmount),
+        description: quickDescription || quickCategory,
+        member_id: null
+      };
+
+      if (quickExistingId) {
+        // UPDATE existing record
+        const { error } = await supabase
+          .from("church_finance")
+          .update(payload)
+          .eq("id", quickExistingId);
+        if (error) throw error;
+        setSuccessMessage(`Updated ${quickCategory} to ${formatCurrency(parseFloat(quickAmount))}`);
+      } else {
+        // INSERT new record
+        const { error } = await supabase
+          .from("church_finance")
+          .insert([payload]);
+        if (error) throw error;
+        setSuccessMessage(`Added ${formatCurrency(parseFloat(quickAmount))} to ${quickCategory}`);
+      }
+
+      setShowSuccessModal(true);
+      await fetchFinancialData();
+    } catch (err) {
+      console.error(err);
+      alert(`Error: ${err.message}`);
+    } finally {
+      setQuickSubmitting(false);
+    }
+  };
+
   const getPartner = (memberId) => {
     if (!memberId) return null;
     const member = members.find(m => String(m.id) === String(memberId));
@@ -72,7 +147,6 @@ export default function Finance() {
     return parseInt(member.id) > parseInt(member.bindedto);
   };
 
-  // ========== QUICK REPORT CALCULATIONS ==========
   const currentYear = selectedReportMonth.split('-')[0];
   const monthPrefix = selectedReportMonth;
   const yearPrefix = currentYear;
@@ -82,7 +156,6 @@ export default function Finance() {
     return date.startsWith(yearPrefix + '-');
   };
 
-  // --- TITHES ---
   const activeTithers = members.filter(m => m.is_tither === true);
   const titheTransactions = transactions.filter(t => {
     const cat = (t.category || "").toLowerCase();
@@ -105,25 +178,18 @@ export default function Finance() {
       if (partner) {
         processed.add(mid);
         processed.add(String(partner.id));
-
         const primary = parseInt(mid) < parseInt(partner.id) ? m : partner;
         const secondary = parseInt(mid) < parseInt(partner.id) ? partner : m;
         const primaryGross = parseFloat(primary.gross || 0);
-
         const primaryTx = titheTransactions.filter(t => String(t.member_id) === String(primary.id));
         const secondaryTx = titheTransactions.filter(t => String(t.member_id) === String(secondary.id));
-
         const dateAmountMap = new Map();
         [...primaryTx, ...secondaryTx].forEach(t => {
           const key = `${t.date}_${t.amount}`;
-          if (!dateAmountMap.has(key)) {
-            dateAmountMap.set(key, parseFloat(t.amount || 0));
-          }
+          if (!dateAmountMap.has(key)) dateAmountMap.set(key, parseFloat(t.amount || 0));
         });
-
         let pairTotal = 0;
         dateAmountMap.forEach(amt => { pairTotal += amt; });
-
         if (pairTotal > 0) withRecordsCount++;
         if (primaryGross > 0 && pairTotal >= primaryGross) metCount++;
         totalAmount += pairTotal;
@@ -131,22 +197,15 @@ export default function Finance() {
         processed.add(mid);
         const memberTx = titheTransactions.filter(t => String(t.member_id) === mid);
         const memberTotal = memberTx.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-
         if (memberTotal > 0) withRecordsCount++;
         if (targetGross > 0 && memberTotal >= targetGross) metCount++;
         totalAmount += memberTotal;
       }
     });
 
-    return {
-      totalActive: activeTithers.length,
-      withRecords: withRecordsCount,
-      metGoal: metCount,
-      totalAmount
-    };
+    return { totalActive: activeTithers.length, withRecords: withRecordsCount, metGoal: metCount, totalAmount };
   };
 
-  // --- OFFERING ---
   const offeringTransactions = transactions.filter(t => {
     const cat = (t.category || "").toLowerCase();
     return (cat === "offering" || cat === "basket" || cat.includes("offering") || cat.includes("basket")) && isInPeriod(t.date);
@@ -156,7 +215,6 @@ export default function Finance() {
     totalAmount: offeringTransactions.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0)
   };
 
-  // --- PLEDGE ---
   const activePledgers = members.filter(m => m.is_pledger === true);
   const pledgeTransactions = transactions.filter(t => {
     const cat = (t.category || "").toLowerCase();
@@ -171,47 +229,33 @@ export default function Finance() {
     activePledgers.forEach(m => {
       const mid = String(m.id);
       if (processed.has(mid)) return;
-
       const partner = getPartner(m.id);
-
       if (partner) {
         processed.add(mid);
         processed.add(String(partner.id));
-
         const primary = parseInt(mid) < parseInt(partner.id) ? m : partner;
         const secondary = parseInt(mid) < parseInt(partner.id) ? partner : m;
-
         const primaryTx = pledgeTransactions.filter(t => String(t.member_id) === String(primary.id));
         const secondaryTx = pledgeTransactions.filter(t => String(t.member_id) === String(secondary.id));
-
         const dateAmountMap = new Map();
         [...primaryTx, ...secondaryTx].forEach(t => {
           const key = `${t.date}_${t.amount}`;
-          if (!dateAmountMap.has(key)) {
-            dateAmountMap.set(key, parseFloat(t.amount || 0));
-          }
+          if (!dateAmountMap.has(key)) dateAmountMap.set(key, parseFloat(t.amount || 0));
         });
-
         let pairTotal = 0;
         dateAmountMap.forEach(amt => { pairTotal += amt; });
-
         if (pairTotal > 0) withRecordsCount++;
         totalAmount += pairTotal;
       } else {
         processed.add(mid);
         const memberTx = pledgeTransactions.filter(t => String(t.member_id) === mid);
         const memberTotal = memberTx.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-
         if (memberTotal > 0) withRecordsCount++;
         totalAmount += memberTotal;
       }
     });
 
-    return {
-      totalActive: activePledgers.length,
-      withRecords: withRecordsCount,
-      totalAmount
-    };
+    return { totalActive: activePledgers.length, withRecords: withRecordsCount, totalAmount };
   };
 
   const titheSummary = getTitheSummary();
@@ -222,26 +266,19 @@ export default function Finance() {
       alert("Please specify a valid amount.");
       return;
     }
-
     try {
       setSubmitting(true);
-
       const amount = parseFloat(editFormData.amount);
       const memberId = editFormData.member_id ? parseInt(editFormData.member_id) : null;
-
       const payload = {
         date: editFormData.date,
         transaction_type: editFormData.transaction_type,
         category: editFormData.category,
-        amount: amount,
+        amount,
         description: editFormData.description || null,
         member_id: memberId
       };
-
-      const { error } = await supabase
-        .from("church_finance")
-        .update(payload)
-        .eq("id", id);
+      const { error } = await supabase.from("church_finance").update(payload).eq("id", id);
       if (error) throw error;
 
       if (memberId && (editFormData.category === "Tithes" || editFormData.category === "Pledge")) {
@@ -249,27 +286,16 @@ export default function Finance() {
         const partner = member?.bindedto ? members.find(m => String(m.id) === String(member.bindedto)) : null;
         if (partner) {
           const { data: partnerRecord, error: findErr } = await supabase
-            .from("church_finance")
-            .select("*")
-            .eq("member_id", partner.id)
-            .eq("date", editFormData.date)
-            .eq("category", editFormData.category)
-            .maybeSingle();
-
+            .from("church_finance").select("*")
+            .eq("member_id", partner.id).eq("date", editFormData.date)
+            .eq("category", editFormData.category).maybeSingle();
           if (findErr) throw findErr;
-
           const partnerPayload = { ...payload, member_id: partner.id };
-
           if (partnerRecord) {
-            const { error: updErr } = await supabase
-              .from("church_finance")
-              .update(partnerPayload)
-              .eq("id", partnerRecord.id);
+            const { error: updErr } = await supabase.from("church_finance").update(partnerPayload).eq("id", partnerRecord.id);
             if (updErr) throw updErr;
           } else {
-            const { error: insErr } = await supabase
-              .from("church_finance")
-              .insert([partnerPayload]);
+            const { error: insErr } = await supabase.from("church_finance").insert([partnerPayload]);
             if (insErr) throw insErr;
           }
         }
@@ -290,18 +316,13 @@ export default function Finance() {
     const amt = parseFloat(item.amount || 0);
     const cat = (item.category || "").trim();
     const catLower = cat.toLowerCase();
-
     if (item.member_id && (catLower === "tithes" || catLower === "tithe" || catLower === "pledge" || catLower.includes("pledge"))) {
-      if (isSecondaryMember(item.member_id)) {
-        return acc;
-      }
+      if (isSecondaryMember(item.member_id)) return acc;
     }
-
     if (item.transaction_type === "Income") {
       acc.totalIncome += amt;
       if (catLower === "tithes" || catLower === "tithe") acc.tithes += amt;
       else if (catLower === "pledge" || catLower.includes("pledge")) acc.pledge += amt;
-      else if (catLower === "offering" || catLower.includes("offering") || catLower === "basket" || catLower.includes("basket") || catLower.includes("collection")) acc.offering += amt;
       else acc.offering += amt;
     } else if (item.transaction_type === "Expense") {
       acc.totalExpenses += amt;
@@ -311,22 +332,14 @@ export default function Finance() {
 
   const netCashOnHand = metrics.totalIncome - metrics.totalExpenses;
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat("en-PH", {
-      style: "currency",
-      currency: "PHP",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(value || 0);
-  };
+  const formatCurrency = (value) => new Intl.NumberFormat("en-PH", {
+    style: "currency", currency: "PHP",
+    minimumFractionDigits: 2, maximumFractionDigits: 2
+  }).format(value || 0);
 
-  const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString("en-PH", {
-      month: "short",
-      day: "numeric",
-      year: "numeric"
-    });
-  };
+  const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString("en-PH", {
+    month: "short", day: "numeric", year: "numeric"
+  });
 
   const getMemberName = (id) => {
     if (!id) return null;
@@ -335,29 +348,27 @@ export default function Finance() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb] text-slate-900 antialiased overflow-x-hidden">
+    <div className="min-h-screen w-full bg-[#f5f7fb] text-slate-900 antialiased overflow-x-hidden">
+
       {/* SUCCESS MODAL */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-sm w-full p-6 text-center">
-            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <FaCheckCircle className="text-emerald-600 text-xl" />
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-xs w-full p-5 text-center">
+            <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <FaCheckCircle className="text-emerald-600 text-lg" />
             </div>
-            <h3 className="font-black text-slate-900 text-lg mb-1">Success!</h3>
-            <p className="text-sm text-slate-500 mb-4">{successMessage}</p>
+            <h3 className="font-black text-slate-900 text-base mb-1">Success!</h3>
+            <p className="text-xs text-slate-500 mb-4">{successMessage}</p>
             <div className="flex gap-2">
-              <button 
-                onClick={() => {
-                  setShowSuccessModal(false);
-                  fetchFinancialData();
-                }}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-sm transition-all"
+              <button
+                onClick={() => { setShowSuccessModal(false); fetchFinancialData(); }}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 font-bold py-2 rounded-xl text-xs transition-all"
               >
-                Refresh Data
+                Refresh
               </button>
-              <button 
+              <button
                 onClick={() => setShowSuccessModal(false)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-sm transition-all"
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-xs transition-all"
               >
                 Close
               </button>
@@ -367,131 +378,130 @@ export default function Finance() {
       )}
 
       {/* Back Navigation */}
-      <div className="fixed top-3 left-3 z-50 sm:top-4 sm:left-4">
-        <Link to="/ministries" className="flex items-center gap-2 bg-white/80 backdrop-blur border border-slate-200 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 hover:text-blue-600 transition-colors shadow-sm">
+      <div className="fixed top-3 left-3 z-50">
+        <Link
+          to="/ministries"
+          className="flex items-center gap-1.5 bg-white/80 backdrop-blur border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:text-blue-600 transition-colors shadow-sm"
+        >
           <FaHome /><span className="hidden sm:inline">Back</span>
         </Link>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-6 md:py-8 pt-16 sm:pt-20">
+      <div className="w-full max-w-5xl mx-auto px-3 sm:px-4 py-5 pt-14 sm:pt-9">
+
         {/* Header */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight">
+        <div className="text-center mb-5">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight">
             Finance <span className="text-blue-600">Tracker</span>
           </h1>
         </div>
 
-        {/* ===== METRICS CARDS ===== */}
+        {/* ===== METRICS ===== */}
         <div className="space-y-2 mb-4">
-          {/* Net Cash */}
-          <div className="bg-blue-600 text-white rounded-xl p-4 shadow-sm">
-            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-blue-200 flex items-center gap-1.5">
+
+          {/* Net Cash — full width */}
+          <div className="bg-blue-600 text-white rounded-xl px-4 py-3 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-200 flex items-center gap-1.5">
               <FaWallet /> Net Cash on Hand
             </p>
-            <p className="text-xl sm:text-2xl md:text-3xl font-black mt-0.5 tracking-tight">{formatCurrency(netCashOnHand)}</p>
+            <p className="text-2xl sm:text-3xl font-black mt-0.5 tracking-tight">{formatCurrency(netCashOnHand)}</p>
           </div>
 
-          {/* Income & Expense */}
+          {/* Income & Expense — 2 cols */}
           <div className="grid grid-cols-2 gap-2">
-            <Link to="/ministries/finance/total-income" className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all block">
-              <p className="text-[10px] sm:text-[11px] font-bold uppercase text-slate-400 flex items-center gap-1">
+            <Link to="/ministries/finance/total-income" className="bg-white border border-slate-200 rounded-xl px-3 py-2.5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+              <p className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
                 <FaArrowUp className="text-emerald-500" /> Total Income
               </p>
-              <p className="text-sm sm:text-base md:text-xl font-black text-emerald-600 mt-0.5 truncate">{formatCurrency(metrics.totalIncome)}</p>
+              <p className="text-sm sm:text-base font-black text-emerald-600 mt-0.5 truncate">{formatCurrency(metrics.totalIncome)}</p>
             </Link>
-            <Link to="/ministries/finance/expenses" className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all block">
-              <p className="text-[10px] sm:text-[11px] font-bold uppercase text-slate-400 flex items-center gap-1">
+            <Link to="/ministries/finance/expenses" className="bg-white border border-slate-200 rounded-xl px-3 py-2.5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+              <p className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
                 <FaArrowDown className="text-rose-500" /> Total Expense
               </p>
-              <p className="text-sm sm:text-base md:text-xl font-black text-rose-600 mt-0.5 truncate">{formatCurrency(metrics.totalExpenses)}</p>
+              <p className="text-sm sm:text-base font-black text-rose-600 mt-0.5 truncate">{formatCurrency(metrics.totalExpenses)}</p>
             </Link>
           </div>
 
-          {/* Three Income Category Breakdown */}
+          {/* Tithes / Offering / Pledge — 3 cols */}
           <div className="grid grid-cols-3 gap-2">
-            <Link to="/ministries/finance/tithes" className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all block">
-              <p className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
-                <FaPiggyBank className="text-blue-500 text-[10px]" /> Tithes
+            <Link to="/ministries/finance/tithes" className="bg-white border border-slate-200 rounded-xl px-2 py-2 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+              <p className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-0.5">
+                <FaPiggyBank className="text-blue-500" /> Tithes
               </p>
-              <p className="text-xs sm:text-sm md:text-base font-black text-slate-900 mt-0.5 truncate">{formatCurrency(metrics.tithes)}</p>
+              <p className="text-sm sm:text-base font-black text-slate-900 mt-0.5 truncate">{formatCurrency(metrics.tithes)}</p>
             </Link>
-            <Link to="/ministries/finance/offering" className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all block">
-              <p className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
-                <FaHandHoldingUsd className="text-amber-500 text-[10px]" /> Offering
+            <Link to="/ministries/finance/offering" className="bg-white border border-slate-200 rounded-xl px-2 py-2 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+              <p className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-0.5">
+                <FaHandHoldingUsd className="text-amber-500" /> Offering
               </p>
-              <p className="text-xs sm:text-sm md:text-base font-black text-slate-900 mt-0.5 truncate">{formatCurrency(metrics.offering)}</p>
+              <p className="text-sm sm:text-base font-black text-slate-900 mt-0.5 truncate">{formatCurrency(metrics.offering)}</p>
             </Link>
-            <Link to="/ministries/finance/pledge" className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all block">
-              <p className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
-                <FaPrayingHands className="text-purple-500 text-[10px]" /> Pledge
+            <Link to="/ministries/finance/pledge" className="bg-white border border-slate-200 rounded-xl px-2 py-2 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+              <p className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-0.5">
+                <FaPrayingHands className="text-purple-500" /> Pledge
               </p>
-              <p className="text-xs sm:text-sm md:text-base font-black text-slate-900 mt-0.5 truncate">{formatCurrency(metrics.pledge)}</p>
+              <p className="text-sm sm:text-base font-black text-slate-900 mt-0.5 truncate">{formatCurrency(metrics.pledge)}</p>
             </Link>
           </div>
         </div>
 
-        {/* ===== MAIN SECTION: Quick Report + History ===== */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          {/* Quick Report (was New Entry) */}
+        {/* ===== QUICK REPORT + RECENT ACTIVITY ===== */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
+
+          {/* Quick Report — 2 cols on lg */}
           <div className="lg:col-span-2">
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-              {/* Quick Report Header */}
-              <div className="px-4 py-3 bg-slate-50/50 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <FaChartBar className="text-blue-500 text-sm" />
-                  <h3 className="text-sm font-black text-slate-800">Quick Report</h3>
+
+              {/* Header */}
+              <div className="px-3 py-2.5 bg-slate-50/50 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <FaChartBar className="text-blue-500 text-xs" />
+                  <h3 className="text-xs font-black text-slate-800">Quick Report</h3>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">View:</span>
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <div className="flex bg-slate-100 rounded-lg p-0.5">
                     <button
                       onClick={() => setReportView("monthly")}
-                      className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-                        reportView === "monthly"
-                          ? "bg-white text-blue-600 shadow-sm"
-                          : "text-slate-500 hover:text-slate-700"
+                      className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                        reportView === "monthly" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
                       }`}
-                    >
-                      Monthly
-                    </button>
+                    >Monthly</button>
                     <button
                       onClick={() => setReportView("annual")}
-                      className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-                        reportView === "annual"
-                          ? "bg-white text-blue-600 shadow-sm"
-                          : "text-slate-500 hover:text-slate-700"
+                      className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                        reportView === "annual" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
                       }`}
-                    >
-                      Annual
-                    </button>
+                    >Annual</button>
                   </div>
                   {reportView === "monthly" && (
                     <input
                       type="month"
                       value={selectedReportMonth}
                       onChange={(e) => setSelectedReportMonth(e.target.value)}
-                      className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer"
+                      className="max-w-[120px] bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-[11px] font-bold text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer"
                     />
                   )}
                   {reportView === "annual" && (
-                    <span className="text-[11px] font-bold text-slate-600 bg-white border border-slate-200 rounded-lg px-2 py-1">
+                    <span className="text-[11px] font-bold text-slate-600 bg-white border border-slate-200 rounded-lg px-2 py-0.5">
                       {currentYear}
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* Quick Report Cards */}
-              <div className="p-3 space-y-3">
-                {/* Tithes Card */}
-                <Link to="/ministries/finance/tithes" className="block bg-blue-50/50 border border-blue-100 rounded-xl p-3 hover:shadow-md hover:-translate-y-0.5 transition-all">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <FaPiggyBank className="text-blue-600 text-sm" />
+              {/* Cards */}
+              <div className="p-2.5 space-y-2">
+
+                {/* Tithes */}
+                <Link to="/ministries/finance/tithes" className="block bg-blue-50/50 border border-blue-100 rounded-xl p-2.5 hover:shadow-md hover:-translate-y-0.5 transition-all">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <FaPiggyBank className="text-blue-600 text-xs" />
                     </div>
                     <div>
-                      <p className="text-xs font-black text-slate-800">Tithes</p>
-                      <p className="text-[10px] font-bold text-slate-400">
+                      <p className="text-xs font-black text-slate-800 leading-tight">Tithes</p>
+                      <p className="text-[10px] font-bold text-slate-400 leading-tight">
                         {reportView === "monthly" ? "This Month" : "This Year"}
                       </p>
                     </div>
@@ -509,24 +519,22 @@ export default function Finance() {
                         {titheSummary.withRecords}<span className="text-slate-400 font-medium">/{titheSummary.totalActive}</span>
                       </span>
                     </div>
-                    <div className="pt-1 border-t border-blue-100">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase">Total</span>
-                        <span className="text-sm font-black text-blue-600">{formatCurrency(titheSummary.totalAmount)}</span>
-                      </div>
+                    <div className="pt-1 border-t border-blue-100 flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">Total</span>
+                      <span className="text-sm font-black text-blue-600">{formatCurrency(titheSummary.totalAmount)}</span>
                     </div>
                   </div>
                 </Link>
 
-                {/* Offering Card */}
-                <Link to="/ministries/finance/offering" className="block bg-amber-50/50 border border-amber-100 rounded-xl p-3 hover:shadow-md hover:-translate-y-0.5 transition-all">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
-                      <FaHandHoldingUsd className="text-amber-600 text-sm" />
+                {/* Offering */}
+                <Link to="/ministries/finance/offering" className="block bg-amber-50/50 border border-amber-100 rounded-xl p-2.5 hover:shadow-md hover:-translate-y-0.5 transition-all">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="w-7 h-7 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <FaHandHoldingUsd className="text-amber-600 text-xs" />
                     </div>
                     <div>
-                      <p className="text-xs font-black text-slate-800">Offering</p>
-                      <p className="text-[10px] font-bold text-slate-400">
+                      <p className="text-xs font-black text-slate-800 leading-tight">Offering</p>
+                      <p className="text-[10px] font-bold text-slate-400 leading-tight">
                         {reportView === "monthly" ? "This Month" : "This Year"}
                       </p>
                     </div>
@@ -536,24 +544,22 @@ export default function Finance() {
                       <span className="text-[10px] font-bold text-slate-500">Records</span>
                       <span className="text-xs font-black text-amber-600">{offeringSummary.recordCount}</span>
                     </div>
-                    <div className="pt-1 border-t border-amber-100">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase">Total</span>
-                        <span className="text-sm font-black text-amber-600">{formatCurrency(offeringSummary.totalAmount)}</span>
-                      </div>
+                    <div className="pt-1 border-t border-amber-100 flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">Total</span>
+                      <span className="text-sm font-black text-amber-600">{formatCurrency(offeringSummary.totalAmount)}</span>
                     </div>
                   </div>
                 </Link>
 
-                {/* Pledge Card */}
-                <Link to="/ministries/finance/pledge" className="block bg-purple-50/50 border border-purple-100 rounded-xl p-3 hover:shadow-md hover:-translate-y-0.5 transition-all">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                      <FaPrayingHands className="text-purple-600 text-sm" />
+                {/* Pledge */}
+                <Link to="/ministries/finance/pledge" className="block bg-purple-50/50 border border-purple-100 rounded-xl p-2.5 hover:shadow-md hover:-translate-y-0.5 transition-all">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="w-7 h-7 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <FaPrayingHands className="text-purple-600 text-xs" />
                     </div>
                     <div>
-                      <p className="text-xs font-black text-slate-800">Pledge</p>
-                      <p className="text-[10px] font-bold text-slate-400">
+                      <p className="text-xs font-black text-slate-800 leading-tight">Pledge</p>
+                      <p className="text-[10px] font-bold text-slate-400 leading-tight">
                         {reportView === "monthly" ? "This Month" : "This Year"}
                       </p>
                     </div>
@@ -565,24 +571,95 @@ export default function Finance() {
                         {pledgeSummary.withRecords}<span className="text-slate-400 font-medium">/{pledgeSummary.totalActive}</span>
                       </span>
                     </div>
-                    <div className="pt-1 border-t border-purple-100">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase">Total</span>
-                        <span className="text-sm font-black text-purple-600">{formatCurrency(pledgeSummary.totalAmount)}</span>
-                      </div>
+                    <div className="pt-1 border-t border-purple-100 flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">Total</span>
+                      <span className="text-sm font-black text-purple-600">{formatCurrency(pledgeSummary.totalAmount)}</span>
                     </div>
                   </div>
                 </Link>
+
+                {/* Quick Add */}
+                <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-2">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <div className="w-6 h-6 bg-emerald-100 rounded-md flex items-center justify-center flex-shrink-0">
+                      <FaPlus className="text-emerald-600 text-[10px]" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-black text-slate-800 leading-tight">Quick Add</p>
+                      <p className="text-[9px] font-bold text-slate-400 leading-tight">
+                        {quickExistingId ? "Update existing record" : "Add to Total Income"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Warning if record exists */}
+                  {quickExistingId && (
+                    <div className="bg-amber-100 border border-amber-200 rounded-md px-2 py-1 mb-1.5">
+                      <p className="text-[9px] text-amber-700 font-bold">
+                        ⚠️ {quickCategory} already recorded on {formatDate(quickDate)}. Will update instead of add.
+                      </p>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleQuickAdd} className="space-y-1.5">
+                    {/* Date picker */}
+                    <input
+                      type="date"
+                      value={quickDate}
+                      onChange={(e) => setQuickDate(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-md px-2 py-1 text-[11px] font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
+                    />
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={quickAmount}
+                        onChange={(e) => setQuickAmount(e.target.value)}
+                        placeholder="₱ Amount"
+                        required
+                        className="w-full bg-white border border-slate-200 rounded-md px-2 py-1 text-[11px] font-bold text-slate-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/10"
+                      />
+                      <select
+                        value={quickCategory}
+                        onChange={(e) => setQuickCategory(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-md px-1.5 py-1 text-[11px] font-bold text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                      >
+                        <option value="Offering">Offering</option>
+                        <option value="Tithes">Tithes</option>
+                        <option value="Pledge">Pledge</option>
+                      </select>
+                    </div>
+                    <input
+                      type="text"
+                      value={quickDescription}
+                      onChange={(e) => setQuickDescription(e.target.value)}
+                      placeholder="Description (optional)"
+                      className="w-full bg-white border border-slate-200 rounded-md px-2 py-1 text-[11px] font-semibold text-slate-700 focus:outline-none focus:border-emerald-500"
+                    />
+                    <button
+                      type="submit"
+                      disabled={quickSubmitting}
+                      className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 font-bold py-1.5 rounded-md text-[11px] transition-all flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      {quickSubmitting ? (
+                        <><FaSpinner className="animate-spin text-[10px]" /> {quickExistingId ? "Updating..." : "Adding..."}</>
+                      ) : (
+                        <><FaPlus className="text-[10px]" /> {quickExistingId ? "Update" : "Add"}</>
+                      )}
+                    </button>
+                  </form>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* History */}
+          {/* Recent Activity — 3 cols on lg */}
           <div className="lg:col-span-3">
             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-              <div className="px-4 py-3 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                  <FaHistory className="text-slate-400" /> Recent Activity (Latest 5)
+              <div className="px-3 py-2.5 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <FaHistory className="text-slate-400 text-xs" /> Recent Activity
                 </h3>
                 <span className="text-[11px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md font-bold">
                   {transactions.length} Total
@@ -590,23 +667,25 @@ export default function Finance() {
               </div>
 
               {loading && transactions.length === 0 ? (
-                <div className="flex items-center justify-center py-12">
-                  <FaSpinner className="animate-spin text-blue-500 mr-2 text-base" />
+                <div className="flex items-center justify-center py-10">
+                  <FaSpinner className="animate-spin text-blue-500 mr-2" />
                   <span className="text-sm text-slate-500 font-medium">Loading...</span>
                 </div>
               ) : transactions.length === 0 ? (
-                <div className="py-12 text-center">
+                <div className="py-10 text-center">
                   <p className="text-sm text-slate-400 font-medium">No transactions yet.</p>
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {transactions.slice(0, 5).map((tx) => {
+                  {transactions.slice(0, 7).map((tx) => {
                     const isEditing = tx.id === editingId;
-                    const isIncome = isEditing ? editFormData.transaction_type === "Income" : tx.transaction_type === "Income";
+                    const isIncome = isEditing
+                      ? editFormData.transaction_type === "Income"
+                      : tx.transaction_type === "Income";
 
                     if (isEditing) {
                       return (
-                        <div key={tx.id} className="p-3.5 bg-blue-50/50 border-l-4 border-blue-500 space-y-2">
+                        <div key={tx.id} className="p-3 bg-blue-50/50 border-l-4 border-blue-500 space-y-2">
                           <div className="grid grid-cols-2 gap-2">
                             <div>
                               <label className="text-[9px] font-bold text-slate-500 uppercase">Type</label>
@@ -673,20 +752,21 @@ export default function Finance() {
                             </div>
                           </div>
 
-                          {editFormData.transaction_type === "Income" && (editFormData.category === "Tithes" || editFormData.category === "Pledge") && (
-                            <div>
-                              <label className="text-[9px] font-bold text-slate-500 uppercase">Contributor</label>
-                              <select
-                                value={editFormData.member_id || ""}
-                                onChange={(e) => setEditFormData(prev => ({ ...prev, member_id: e.target.value }))}
-                                className="w-full border border-slate-200 bg-white rounded-md px-2 py-1 text-xs"
-                              >
-                                <option value="">Select Contributor</option>
-                                {members.map(m => (
-                                  <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>
-                                ))}
-                              </select>
-                            </div>
+                          {editFormData.transaction_type === "Income" &&
+                            (editFormData.category === "Tithes" || editFormData.category === "Pledge") && (
+                              <div>
+                                <label className="text-[9px] font-bold text-slate-500 uppercase">Contributor</label>
+                                <select
+                                  value={editFormData.member_id || ""}
+                                  onChange={(e) => setEditFormData(prev => ({ ...prev, member_id: e.target.value }))}
+                                  className="w-full border border-slate-200 bg-white rounded-md px-2 py-1 text-xs"
+                                >
+                                  <option value="">Select Contributor</option>
+                                  {members.map(m => (
+                                    <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>
+                                  ))}
+                                </select>
+                              </div>
                           )}
 
                           <div>
@@ -705,14 +785,12 @@ export default function Finance() {
                               disabled={submitting}
                               onClick={() => setEditingId(null)}
                               className="px-2.5 py-1 text-[11px] font-bold bg-slate-200 text-slate-700 rounded hover:bg-slate-300 disabled:opacity-50 cursor-pointer"
-                            >
-                              Cancel
-                            </button>
+                            >Cancel</button>
                             <button
                               type="button"
                               disabled={submitting}
                               onClick={() => handleUpdateTransaction(tx.id)}
-                              className="px-2.5 py-1 text-[11px] font-bold bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1 cursor-pointer"
+                              className="px-2.5 py-1 text-[11px] font-bold bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1 cursor-pointer"
                             >
                               {submitting && <FaSpinner className="animate-spin text-[9px]" />}
                               Save
@@ -723,48 +801,43 @@ export default function Finance() {
                     }
 
                     return (
-                      <div key={tx.id} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50/50 transition-colors">
-                        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[10px] font-bold text-slate-400 tracking-wider">
-                              {formatDate(tx.date)}
-                            </span>
-                            <span className={`text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${
-                              isIncome 
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
-                                : "bg-rose-50 text-rose-700 border-rose-200"
-                            }`}>
-                              {tx.category}
-                            </span>
-                          </div>
+                      <div key={tx.id} className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50/50 transition-colors">
+                        {/* Left: date + badge */}
+                        <div className="flex flex-col gap-0.5 flex-shrink-0 w-[78px]">
+                          <span className="text-[10px] font-bold text-slate-400 leading-tight">
+                            {formatDate(tx.date)}
+                          </span>
+                          <span className={`text-[9px] font-black uppercase tracking-wide px-1 py-0.5 rounded border w-fit leading-tight ${
+                            isIncome
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-rose-50 text-rose-700 border-rose-200"
+                          }`}>
+                            {tx.category}
+                          </span>
+                        </div>
 
-                          <p className="text-xs font-semibold text-slate-800 truncate">
+                        {/* Middle: description + member */}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-slate-800 truncate leading-tight">
                             {tx.description || <span className="text-slate-300 italic">No description</span>}
                           </p>
-
                           {tx.member_id && getMemberName(tx.member_id) && (
-                            <p className="text-[10px] text-slate-400 font-medium flex items-center gap-1">
-                              <FaUser className="w-2.5 h-2.5 text-slate-300" /> {getMemberName(tx.member_id)}
+                            <p className="text-[9px] text-slate-400 font-medium truncate leading-tight">
+                              {getMemberName(tx.member_id)}
                             </p>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-3 text-right flex-shrink-0">
-                          <div className="flex flex-col items-end">
-                            <span className={`text-sm font-bold tracking-tight ${isIncome ? "text-emerald-600" : "text-rose-600"}`}>
-                              {isIncome ? "+" : "-"}{formatCurrency(tx.amount)}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingId(tx.id);
-                                setEditFormData({ ...tx });
-                              }}
-                              className="text-[10px] text-slate-500 font-bold hover:text-blue-600 cursor-pointer underline decoration-dotted mt-0.5"
-                            >
-                              Edit
-                            </button>
-                          </div>
+                        {/* Right: amount + edit */}
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <span className={`text-xs font-bold tabular-nums ${isIncome ? "text-emerald-600" : "text-rose-600"}`}>
+                            {isIncome ? "+" : "-"}{formatCurrency(tx.amount)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => { setEditingId(tx.id); setEditFormData({ ...tx }); }}
+                            className="text-[10px] text-slate-400 font-bold hover:text-blue-600 cursor-pointer underline decoration-dotted whitespace-nowrap"
+                          >Edit</button>
                         </div>
                       </div>
                     );
