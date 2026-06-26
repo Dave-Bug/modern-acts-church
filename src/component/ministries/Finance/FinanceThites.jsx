@@ -1149,7 +1149,7 @@ export default function FinanceTithes() {
                       onClick={() => setSaveMode("overwrite")}
                       className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
                         saveMode === "overwrite"
-                          ? "bg-blue-600 text-white"
+                          ? "bg-blue-600 text-emerald-600"
                           : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
                       }`}
                     >
@@ -1160,7 +1160,7 @@ export default function FinanceTithes() {
                       onClick={() => setSaveMode("add")}
                       className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
                         saveMode === "add"
-                          ? "bg-emerald-600 text-white"
+                          ? "bg-emerald-600 text-emerald-600"
                           : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
                       }`}
                     >
@@ -1247,7 +1247,7 @@ export default function FinanceTithes() {
               )}
               <button type="button" onClick={() => setShowEditModal(false)} className="px-3 sm:px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 cursor-pointer">Cancel</button>
               <button type="submit" disabled={isSaving}
-                className={`bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                className={`bg-blue-600 hover:bg-blue-700 px-4 sm:px-5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 {isSaving ? 'Saving...' : `${saveMode === "add" ? "Add" : (editingTitheId ? "Update" : "Set")} Amount`}
               </button>
             </div>
@@ -1257,4 +1257,3 @@ export default function FinanceTithes() {
     </div>
   );
 }
-

@@ -48,7 +48,7 @@ export default function Process() {
     "Soul Winning": { total: 0, ready: 0, women: 0, men: 0 },
     Soaking: { total: 0, ready: 0, women: 0, men: 0 },
     Schooling: { total: 0, ready: 0, women: 0, men: 0 },
-    Graduates: { total: 0, women: 0, men: 0 }, // NEW — no "ready" for graduates
+       Graduates: { total: 0, ready: 0, women: 0, men: 0 }, // ← ADDED ready: 0
   });
 
   const [graduatesCount, setGraduatesCount] = useState(0); // NEW
@@ -79,7 +79,7 @@ export default function Process() {
         "Soul Winning": { total: 0, ready: 0, women: 0, men: 0 },
         Soaking: { total: 0, ready: 0, women: 0, men: 0 },
         Schooling: { total: 0, ready: 0, women: 0, men: 0 },
-        Graduates: { total: 0, women: 0, men: 0 }, // NEW
+         Graduates: { total: 0, ready: 0, women: 0, men: 0 }, // ← ADDED ready: 0
       };
 
       if (data) {
