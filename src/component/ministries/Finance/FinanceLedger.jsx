@@ -162,36 +162,35 @@ export default function Finance() {
     return (cat === "tithes" || cat === "tithe") && isInPeriod(t.date);
   });
 
+  // ========== UPDATED getTitheSummary ==========
   const getTitheSummary = () => {
     const processed = new Set();
     let metCount = 0;
     let withRecordsCount = 0;
     let totalAmount = 0;
 
+    // Annual goal = gross * 12, Monthly goal = gross * 1
+    const goalMultiplier = reportView === "annual" ? 12 : 1;
+
     activeTithers.forEach(m => {
       const mid = String(m.id);
       if (processed.has(mid)) return;
 
       const partner = getPartner(m.id);
-      const targetGross = parseFloat(m.gross || 0);
+      const targetGross = parseFloat(m.gross || 0) * goalMultiplier;
 
       if (partner) {
         processed.add(mid);
         processed.add(String(partner.id));
         const primary = parseInt(mid) < parseInt(partner.id) ? m : partner;
-        const secondary = parseInt(mid) < parseInt(partner.id) ? partner : m;
-        const primaryGross = parseFloat(primary.gross || 0);
+
+        // Sum only PRIMARY member's transactions (matching global metrics logic)
+        // Secondary records are auto-duplicates from handleUpdateTransaction
         const primaryTx = titheTransactions.filter(t => String(t.member_id) === String(primary.id));
-        const secondaryTx = titheTransactions.filter(t => String(t.member_id) === String(secondary.id));
-        const dateAmountMap = new Map();
-        [...primaryTx, ...secondaryTx].forEach(t => {
-          const key = `${t.date}_${t.amount}`;
-          if (!dateAmountMap.has(key)) dateAmountMap.set(key, parseFloat(t.amount || 0));
-        });
-        let pairTotal = 0;
-        dateAmountMap.forEach(amt => { pairTotal += amt; });
+        const pairTotal = primaryTx.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+
         if (pairTotal > 0) withRecordsCount++;
-        if (primaryGross > 0 && pairTotal >= primaryGross) metCount++;
+        if (targetGross > 0 && pairTotal >= targetGross) metCount++;
         totalAmount += pairTotal;
       } else {
         processed.add(mid);
@@ -202,6 +201,11 @@ export default function Finance() {
         totalAmount += memberTotal;
       }
     });
+
+    // Include unassigned tithe transactions (member_id: null) in the total
+    const unassignedTx = titheTransactions.filter(t => t.member_id === null);
+    const unassignedTotal = unassignedTx.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    totalAmount += unassignedTotal;
 
     return { totalActive: activeTithers.length, withRecords: withRecordsCount, metGoal: metCount, totalAmount };
   };
@@ -221,6 +225,7 @@ export default function Finance() {
     return (cat === "pledge" || cat.includes("pledge")) && isInPeriod(t.date);
   });
 
+  // ========== UPDATED getPledgeSummary ==========
   const getPledgeSummary = () => {
     const processed = new Set();
     let withRecordsCount = 0;
@@ -234,16 +239,11 @@ export default function Finance() {
         processed.add(mid);
         processed.add(String(partner.id));
         const primary = parseInt(mid) < parseInt(partner.id) ? m : partner;
-        const secondary = parseInt(mid) < parseInt(partner.id) ? partner : m;
+
+        // Sum only primary member's transactions
         const primaryTx = pledgeTransactions.filter(t => String(t.member_id) === String(primary.id));
-        const secondaryTx = pledgeTransactions.filter(t => String(t.member_id) === String(secondary.id));
-        const dateAmountMap = new Map();
-        [...primaryTx, ...secondaryTx].forEach(t => {
-          const key = `${t.date}_${t.amount}`;
-          if (!dateAmountMap.has(key)) dateAmountMap.set(key, parseFloat(t.amount || 0));
-        });
-        let pairTotal = 0;
-        dateAmountMap.forEach(amt => { pairTotal += amt; });
+        const pairTotal = primaryTx.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+
         if (pairTotal > 0) withRecordsCount++;
         totalAmount += pairTotal;
       } else {
@@ -254,6 +254,11 @@ export default function Finance() {
         totalAmount += memberTotal;
       }
     });
+
+    // Include unassigned pledge transactions in the total
+    const unassignedTx = pledgeTransactions.filter(t => t.member_id === null);
+    const unassignedTotal = unassignedTx.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    totalAmount += unassignedTotal;
 
     return { totalActive: activePledgers.length, withRecords: withRecordsCount, totalAmount };
   };

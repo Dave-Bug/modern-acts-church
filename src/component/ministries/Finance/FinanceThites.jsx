@@ -10,9 +10,6 @@ import { supabase } from "../../../Services/supabase";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 
-/* ═══════════════════════════════════════════════════════════════
-   UTILITY FUNCTIONS
-   ═══════════════════════════════════════════════════════════════ */
 const getTodayString = () => {
   const today = new Date();
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -40,9 +37,6 @@ const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Se
 const formatCurrency = (value) =>
   new Intl.NumberFormat("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value || 0);
 
-/* ═══════════════════════════════════════════════════════════════
-   SHARED HELPERS
-   ═══════════════════════════════════════════════════════════════ */
 const dedupeByKey = (items, keyFn) => {
   const map = new Map();
   items.forEach(item => {
@@ -54,9 +48,6 @@ const dedupeByKey = (items, keyFn) => {
 
 const sumAmounts = (items) => items.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
 
-/* ═══════════════════════════════════════════════════════════════
-   MAIN COMPONENT
-   ═══════════════════════════════════════════════════════════════ */
 export default function FinanceTithes() {
   const [activeTab, setActiveTab] = useState("today");
   const [tithes, setTithes] = useState([]);
@@ -68,8 +59,7 @@ export default function FinanceTithes() {
   const [expandedMembers, setExpandedMembers] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [lastEditDate, setLastEditDate] = useState("");
-  
-  // Modal states
+
   const [showEditModal, setShowEditModal] = useState(false);
   const [showTitherRosterModal, setShowTitherRosterModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
@@ -80,12 +70,10 @@ export default function FinanceTithes() {
   const [editingTitheId, setEditingTitheId] = useState(null);
   const [rosterSearchQuery, setRosterSearchQuery] = useState("");
 
-  // Week modal: overwrite vs add-new
   const [saveMode, setSaveMode] = useState("overwrite");
   const [originalEditDate, setOriginalEditDate] = useState(null);
 
-  // Today tab: inline editing states
-  const [todayAmounts, setTodayAmounts] = useState({}); // { memberId: amount }
+  const [todayAmounts, setTodayAmounts] = useState({});
   const [todaySavingId, setTodaySavingId] = useState(null);
 
   const todayStr = getTodayString();
@@ -93,7 +81,6 @@ export default function FinanceTithes() {
 
   useEffect(() => { fetchTithesData(); }, [selectedMonth]);
 
-  /* ─── Data Fetching ─── */
   async function fetchTithesData(silent = false) {
     try {
       if (!silent) setLoading(true);
@@ -117,7 +104,55 @@ export default function FinanceTithes() {
     }
   }
 
-  /* ─── Member Helpers ─── */
+  /* ─── NEW: Calculate status based on total vs gross ─── */
+  const calculateStatus = (total, gross) => {
+    const g = parseFloat(gross || 0);
+    const t = parseFloat(total || 0);
+    if (g === 0) return 'No Goal';
+    if (t >= g) return 'Met';
+    return 'Short';
+  };
+
+  /* ─── NEW: Get member's monthly status/gross from church_finance ─── */
+  const getMemberMonthlyStatus = (memberId, yearMonth) => {
+    const memberMonthTithes = tithes.filter(t => 
+      String(t.member_id) === String(memberId) && 
+      t.date.startsWith(yearMonth)
+    );
+
+    if (memberMonthTithes.length === 0) {
+      return null;
+    }
+
+    const mostRecent = memberMonthTithes.sort((a, b) => 
+      new Date(b.created_at) - new Date(a.created_at)
+    )[0];
+
+    return {
+      status: mostRecent.status,
+      gross: parseFloat(mostRecent.gross || 0),
+      totalTithes: sumAmounts(memberMonthTithes)
+    };
+  };
+
+  /* ─── NEW: Get member's annual status data from church_finance ─── */
+  const getMemberAnnualStatus = (memberId, year) => {
+    const memberYearTithes = allYearTithes.filter(t => 
+      String(t.member_id) === String(memberId) && 
+      t.date.startsWith(year)
+    );
+
+    const monthData = {};
+    memberYearTithes.forEach(t => {
+      const month = parseInt(t.date.split('-')[1]);
+      if (!monthData[month] || new Date(t.created_at) > new Date(monthData[month].created_at)) {
+        monthData[month] = t;
+      }
+    });
+
+    return monthData;
+  };
+
   const getPartner = (member) => {
     if (!member?.bindedto) return null;
     return members.find(m => String(m.id) === String(member.bindedto)) || null;
@@ -129,7 +164,6 @@ export default function FinanceTithes() {
     setExpandedMembers(prev => ({ ...prev, [memberId]: !prev[memberId] }));
   };
 
-  /* ─── Binding & Status ─── */
   const handleToggleTitherStatus = async (memberId, currentStatus) => {
     try {
       const { error } = await supabase.from("usher_members")
@@ -159,7 +193,6 @@ export default function FinanceTithes() {
     }
   };
 
-  /* ─── Week-based Edit (Monthly tab) ─── */
   const findWeekTithes = (memberId, week) => tithes.filter(t => {
     if (String(t.member_id) !== String(memberId)) return false;
     const day = parseInt(t.date.split('-')[2]);
@@ -195,11 +228,11 @@ export default function FinanceTithes() {
       const weekStart = `${selectedMonth}-${String(week.start).padStart(2, '0')}`;
       const weekEnd = `${selectedMonth}-${String(week.end).padStart(2, '0')}`;
       let defaultDate = weekStart;
-      
+
       if (lastEditDate && lastEditDate >= weekStart && lastEditDate <= weekEnd) {
         defaultDate = lastEditDate;
       }
-      
+
       setEditDate(defaultDate);
       setOriginalEditDate(null);
       setEditDescription("None");
@@ -207,7 +240,6 @@ export default function FinanceTithes() {
     setShowEditModal(true);
   };
 
-  /* ─── Today Tab: Inline Save ─── */
   const getTodayTithe = (memberId) => {
     const matches = tithes.filter(t => String(t.member_id) === String(memberId) && t.date === todayStr);
     return matches.sort((a, b) => b.id - a.id)[0] || null;
@@ -223,6 +255,35 @@ export default function FinanceTithes() {
     return parseInt(m.id) < parseInt(partner.id);
   });
 
+  /* ─── NEW: Build payload with status and gross ─── */
+  const buildTithePayload = (amount, date, memberId, description = "None") => {
+    const member = members.find(m => String(m.id) === String(memberId));
+    let gross = 0;
+    if (member) {
+      gross = parseFloat(member.gross || 0);
+    }
+
+    const [year, month] = date.slice(0, 7).split('-');
+    const existingMonthTithes = tithes.filter(t => 
+      String(t.member_id) === String(memberId) && 
+      t.date.startsWith(`${year}-${month}`)
+    );
+    const currentTotal = sumAmounts(existingMonthTithes) + parseFloat(amount || 0);
+
+    const status = calculateStatus(currentTotal, gross);
+
+    return {
+      date,
+      transaction_type: "Income",
+      category: "Tithes",
+      amount: parseFloat(amount || 0),
+      description: description || "None",
+      member_id: memberId,
+      status,
+      gross
+    };
+  };
+
   const handleTodaySave = async (member) => {
     const amount = parseFloat(todayAmounts[member.id]) || 0;
     if (amount <= 0) return;
@@ -230,17 +291,9 @@ export default function FinanceTithes() {
     setTodaySavingId(member.id);
     try {
       const partner = getPartner(member);
-      
-      // Ensure member_id matches expected format (safely parsed to Int if your DB demands numbers)
       const parsedMemberId = isNaN(member.id) ? member.id : parseInt(member.id, 10);
 
-      const payload = {
-        date: todayStr,
-        transaction_type: "Income",
-        category: "Tithes",
-        amount: amount,
-        description: "None"
-      };
+      const payload = buildTithePayload(amount, todayStr, parsedMemberId, "None");
 
       const existingPrimary = getTodayTithe(member.id);
       const existingPartner = partner ? getTodayTithe(partner.id) : null;
@@ -254,14 +307,16 @@ export default function FinanceTithes() {
           .eq("date", todayStr)
           .neq("id", existingPrimary.id);
       } else {
-        const { error } = await supabase.from("church_finance").insert([{ ...payload, member_id: parsedMemberId }]);
+        const { error } = await supabase.from("church_finance").insert([payload]);
         if (error) throw error;
       }
 
       if (partner) {
         const parsedPartnerId = isNaN(partner.id) ? partner.id : parseInt(partner.id, 10);
+        const partnerPayload = buildTithePayload(amount, todayStr, parsedPartnerId, `Synced from ${member.first_name}`);
+
         if (existingPartner) {
-          const { error } = await supabase.from("church_finance").update(payload).eq("id", existingPartner.id);
+          const { error } = await supabase.from("church_finance").update(partnerPayload).eq("id", existingPartner.id);
           if (error) throw error;
           await supabase.from("church_finance").delete()
             .eq("category", "Tithes")
@@ -269,7 +324,7 @@ export default function FinanceTithes() {
             .eq("date", todayStr)
             .neq("id", existingPartner.id);
         } else {
-          const { error } = await supabase.from("church_finance").insert([{ ...payload, member_id: parsedPartnerId }]);
+          const { error } = await supabase.from("church_finance").insert([partnerPayload]);
           if (error) throw error;
         }
       }
@@ -291,7 +346,6 @@ export default function FinanceTithes() {
     if (e.key === "Enter") handleTodaySave(member);
   };
 
-  /* ─── Gross Update ─── */
   const handleGrossUpdate = async (memberId, newGrossValue) => {
     try {
       const { error } = await supabase.from("usher_members")
@@ -303,7 +357,6 @@ export default function FinanceTithes() {
     }
   };
 
-  /* ─── Week-based Save (Modal) ─── */
   const handleSaveTithe = async (e) => {
     e.preventDefault();
     if (isSaving || !editAmount || !editDate || !selectedMember || !selectedWeek) return;
@@ -315,20 +368,16 @@ export default function FinanceTithes() {
 
     try {
       const parsedMemberId = isNaN(member.id) ? member.id : parseInt(member.id, 10);
-      const payload = {
-        date: editDate,
-        transaction_type: "Income",
-        category: "Tithes",
-        amount: amount,
-        description: editDescription || "None"
-      };
+
+      const payload = buildTithePayload(amount, editDate, parsedMemberId, editDescription || "None");
 
       if (saveMode === "add") {
-        const { error } = await supabase.from("church_finance").insert([{ ...payload, member_id: parsedMemberId }]);
+        const { error } = await supabase.from("church_finance").insert([payload]);
         if (error) throw error;
         if (partner) {
           const parsedPartnerId = isNaN(partner.id) ? partner.id : parseInt(partner.id, 10);
-          const { error: pErr } = await supabase.from("church_finance").insert([{ ...payload, member_id: parsedPartnerId }]);
+          const partnerPayload = buildTithePayload(amount, editDate, parsedPartnerId, `Synced from ${member.first_name}`);
+          const { error: pErr } = await supabase.from("church_finance").insert([partnerPayload]);
           if (pErr) throw pErr;
         }
       } else {
@@ -339,16 +388,18 @@ export default function FinanceTithes() {
             const partnerRecords = findWeekTithes(partner.id, selectedWeek)
               .filter(t => t.date === originalEditDate);
             for (const rec of partnerRecords) {
-              const { error: pErr } = await supabase.from("church_finance").update(payload).eq("id", rec.id);
+              const partnerPayload = buildTithePayload(amount, editDate, rec.member_id, `Synced from ${member.first_name}`);
+              const { error: pErr } = await supabase.from("church_finance").update(partnerPayload).eq("id", rec.id);
               if (pErr) throw pErr;
             }
           }
         } else {
-          const { error } = await supabase.from("church_finance").insert([{ ...payload, member_id: parsedMemberId }]);
+          const { error } = await supabase.from("church_finance").insert([payload]);
           if (error) throw error;
           if (partner) {
             const parsedPartnerId = isNaN(partner.id) ? partner.id : parseInt(partner.id, 10);
-            const { error: pErr } = await supabase.from("church_finance").insert([{ ...payload, member_id: parsedPartnerId }]);
+            const partnerPayload = buildTithePayload(amount, editDate, parsedPartnerId, `Synced from ${member.first_name}`);
+            const { error: pErr } = await supabase.from("church_finance").insert([partnerPayload]);
             if (pErr) throw pErr;
           }
         }
@@ -368,7 +419,6 @@ export default function FinanceTithes() {
     }
   };
 
-  /* ─── Row Builders ─── */
   const getMonthlyRows = () => buildRows(activeTitherMembers, tithes, true);
   const getAnnualRows = () => buildRows(activeTitherMembers, allYearTithes, false);
 
@@ -406,21 +456,48 @@ export default function FinanceTithes() {
             return { ...week, records: weekRecords, amount: weekAmount };
           });
           const total = weeklyData.reduce((s, w) => s + w.amount, 0);
+
+          const monthStatus = getMemberMonthlyStatus(primary.id, selectedMonth);
+
+          let displayGross, displayStatus, isAchieved;
+
+          if (monthStatus) {
+            displayGross = monthStatus.gross;
+            displayStatus = monthStatus.status;
+            isAchieved = displayStatus === 'Met';
+          } else {
+            displayGross = primaryGross;
+            displayStatus = primaryGross === 0 ? 'No Goal' : 'Short';
+            isAchieved = false;
+          }
+
           rows.push({
             memberId: primary.id, name: `${primary.first_name} ${primary.last_name}`,
-            totalTithes: total, gross: primaryGross,
-            isAchieved: primaryGross > 0 && total >= primaryGross,
+            totalTithes: total, gross: displayGross,
+            isAchieved: isAchieved,
+            monthlyStatus: displayStatus,
             weeklyData, isVirtual: false, isBoundPair: true,
             partnerName: `${secondary.first_name} ${secondary.last_name}`
           });
         } else {
-          let runningTotal = 0, metCount = 0;
+          let runningTotal = 0;
+          const annualStatusData = getMemberAnnualStatus(primary.id, currentYear);
+          let metCount = 0;
+
           const months = MONTH_NAMES.map((_, idx) => {
             const prefix = `${currentYear}-${String(idx + 1).padStart(2, '0')}`;
             const sum = sumAmounts(primaryTithes.filter(t => t.date.startsWith(prefix)));
             runningTotal += sum;
-            const met = primaryGross > 0 && sum >= primaryGross;
+
+            const monthRecord = annualStatusData[idx + 1];
+            let met;
+            if (monthRecord) {
+              met = monthRecord.status === 'Met';
+            } else {
+              met = false;
+            }
             if (met) metCount++;
+
             return { amount: sum, isMet: met };
           });
           rows.push({
@@ -446,21 +523,48 @@ export default function FinanceTithes() {
             return { ...week, records: weekRecords, amount: weekAmount };
           });
           const total = weeklyData.reduce((s, w) => s + w.amount, 0);
+
+          const monthStatus = getMemberMonthlyStatus(m.id, selectedMonth);
+
+          let displayGross, displayStatus, isAchieved;
+
+          if (monthStatus) {
+            displayGross = monthStatus.gross;
+            displayStatus = monthStatus.status;
+            isAchieved = displayStatus === 'Met';
+          } else {
+            displayGross = targetGross;
+            displayStatus = targetGross === 0 ? 'No Goal' : 'Short';
+            isAchieved = false;
+          }
+
           rows.push({
             memberId: m.id, name: `${m.first_name} ${m.last_name}`,
-            totalTithes: total, gross: targetGross,
-            isAchieved: targetGross > 0 && total >= targetGross,
+            totalTithes: total, gross: displayGross,
+            isAchieved: isAchieved,
+            monthlyStatus: displayStatus,
             weeklyData, isVirtual: false, isBoundPair: false
           });
         } else {
           const deduped = dedupeByKey(memberTithes, t => `${t.date}_${t.amount}`);
-          let runningTotal = 0, metCount = 0;
+          let runningTotal = 0;
+          const annualStatusData = getMemberAnnualStatus(m.id, currentYear);
+          let metCount = 0;
+
           const months = MONTH_NAMES.map((_, idx) => {
             const prefix = `${currentYear}-${String(idx + 1).padStart(2, '0')}`;
             const sum = sumAmounts(deduped.filter(t => t.date.startsWith(prefix)));
             runningTotal += sum;
-            const met = targetGross > 0 && sum >= targetGross;
+
+            const monthRecord = annualStatusData[idx + 1];
+            let met;
+            if (monthRecord) {
+              met = monthRecord.status === 'Met';
+            } else {
+              met = false;
+            }
             if (met) metCount++;
+
             return { amount: sum, isMet: met };
           });
           rows.push({
@@ -488,7 +592,8 @@ export default function FinanceTithes() {
         const total = weeklyData.reduce((s, w) => s + w.amount, 0);
         rows.push({
           memberId: "anonymous", name: "Anonymous", totalTithes: total,
-          gross: 0, isAchieved: false, weeklyData, isVirtual: true, isBoundPair: false
+          gross: 0, isAchieved: false, monthlyStatus: 'N/A',
+          weeklyData, isVirtual: true, isBoundPair: false
         });
       } else {
         let runningTotal = 0;
@@ -509,7 +614,6 @@ export default function FinanceTithes() {
     return rows;
   };
 
-  /* ─── Derived Data ─── */
   const weeks = getWeeksInMonth(selectedMonth);
   const monthlyRows = getMonthlyRows();
   const annualRows = getAnnualRows();
@@ -521,9 +625,9 @@ export default function FinanceTithes() {
   const annualGrandTotal = filteredAnnual.reduce((s, r) => s + r.grandTotal, 0);
   const monthlyColTotals = MONTH_NAMES.map((_, idx) => filteredAnnual.reduce((s, r) => s + r.months[idx].amount, 0));
 
-  const achievedCount = filteredMonthly.filter(r => r.isAchieved && !r.isVirtual).length;
-  const notAchievedCount = filteredMonthly.filter(r => !r.isAchieved && r.gross > 0 && !r.isVirtual).length;
-  const noBaselineCount = filteredMonthly.filter(r => r.gross === 0 && !r.isVirtual).length;
+  const achievedCount = filteredMonthly.filter(r => r.monthlyStatus === 'Met' && !r.isVirtual).length;
+  const notAchievedCount = filteredMonthly.filter(r => r.monthlyStatus === 'Short' && !r.isVirtual).length;
+  const noBaselineCount = filteredMonthly.filter(r => (r.monthlyStatus === 'No Goal' || r.gross === 0) && !r.isVirtual).length;
 
   const filteredRoster = members.filter(m =>
     `${m.first_name} ${m.last_name}`.toLowerCase().includes(rosterSearchQuery.toLowerCase())
@@ -541,7 +645,6 @@ export default function FinanceTithes() {
     return total;
   })();
 
-  /* ─── Excel Export ─── */
   const handleExportExcel = async () => {
     const workbook = new ExcelJS.Workbook();
     const wsM = workbook.addWorksheet("Monthly Tracker View");
@@ -564,7 +667,7 @@ export default function FinanceTithes() {
     });
 
     filteredMonthly.forEach((row, i) => {
-      const status = row.isVirtual ? "N/A" : row.gross === 0 ? "N/A" : row.isAchieved ? "Met" : "Short";
+      const status = row.isVirtual ? "N/A" : row.monthlyStatus || "N/A";
       const r = wsM.addRow([row.name, ...row.weeklyData.map(w => w.amount), row.totalTithes, row.gross, status]);
       const bg = i % 2 === 0 ? "FFFFFFFF" : "FFF8FAFC";
       r.eachCell((c, ci) => {
@@ -622,7 +725,6 @@ export default function FinanceTithes() {
       `Tithes_Master_Report_${currentYear}.xlsx`);
   };
 
-  /* ─── RENDER HELPERS ─── */
   const TabButton = ({ id, icon: Icon, label }) => (
     <button onClick={() => setActiveTab(id)}
       className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer ${activeTab === id ? "border-blue-600 text-blue-600" : "border-transparent text-slate-400 hover:text-slate-600"}`}>
@@ -706,7 +808,6 @@ export default function FinanceTithes() {
           </div>
         </div>
 
-        {/* TODAY TAB CONTENT */}
         {activeTab === "today" && (
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
             {loading ? (
@@ -788,7 +889,6 @@ export default function FinanceTithes() {
           </div>
         )}
 
-        {/* MONTHLY TAB CONTENT */}
         {activeTab === "monthly" && (
           <>
             <div className="lg:hidden space-y-3 mb-4">
@@ -814,9 +914,9 @@ export default function FinanceTithes() {
                           {row.isBoundPair && <span className="text-[8px] bg-purple-100 text-purple-600 px-1 py-0.5 rounded font-bold">+ {row.partnerName}</span>}
                         </div>
                         <div className="flex items-center gap-2 mt-1">
-                          {row.isVirtual || row.gross === 0 ? (
+                          {row.isVirtual || row.monthlyStatus === 'No Goal' ? (
                             <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">N/A</span>
-                          ) : row.isAchieved ? (
+                          ) : row.monthlyStatus === 'Met' ? (
                             <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Met</span>
                           ) : (
                             <span className="text-[10px] text-rose-700 font-bold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">Short</span>
@@ -947,8 +1047,8 @@ export default function FinanceTithes() {
                                 )}
                               </td>
                               <td className="py-2.5 px-3 text-center">
-                                {row.isVirtual || row.gross === 0 ? <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">N/A</span> :
-                                  row.isAchieved ? <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Met</span> :
+                                {row.isVirtual || row.monthlyStatus === 'No Goal' ? <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">N/A</span> :
+                                  row.monthlyStatus === 'Met' ? <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Met</span> :
                                     <span className="text-xs text-rose-700 font-bold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">Short</span>}
                               </td>
                               <td className="py-2.5 px-3 text-center">
@@ -1000,7 +1100,6 @@ export default function FinanceTithes() {
           </>
         )}
 
-        {/* ANNUAL TAB CONTENT */}
         {activeTab === "annual" && (
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
             {loading ? (
@@ -1059,7 +1158,6 @@ export default function FinanceTithes() {
         )}
       </div>
 
-      {/* ROSTER MODAL */}
       {showTitherRosterModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-2xl w-full max-h-[90vh] sm:max-h-[85vh] flex flex-col">
@@ -1111,7 +1209,6 @@ export default function FinanceTithes() {
         </div>
       )}
 
-      {/* WEEK EDIT MODAL */}
       {showEditModal && selectedMember && selectedWeek && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm">
           <form onSubmit={handleSaveTithe} className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
