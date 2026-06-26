@@ -6,16 +6,14 @@ import {
   FaHome 
 } from "react-icons/fa";
 import Process from "./Pages/Process"; 
-import Devotion from "./Devotion"; // Make sure this path is correct!
+import Devotion from "./Devotion";
 import Lifegroup from "./Lifegroup";
 
 export default function DiscipleshipJourney() {
-  // Navigation & UI States
   const [currentMenu, setCurrentMenu] = useState("Process"); 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  // Updated to the Main Categories
   const navigationItems = [
     { name: "Process", icon: FaCheckCircle, color: "text-green-500" },
     { name: "Devotion", icon: FaBook, color: "text-amber-500" },
@@ -25,13 +23,12 @@ export default function DiscipleshipJourney() {
   return (
     <div className="h-[100dvh] w-screen bg-[#f8fafc] text-slate-800 flex overflow-hidden antialiased font-sans relative">
 
-      {/* ================= SIDEBAR MENU (DESKTOP) ================= */}
+      {/* SIDEBAR MENU (DESKTOP) */}
       <aside 
         className={`hidden md:flex flex-col bg-slate-900 text-slate-200 h-full border-r border-slate-800 transition-all duration-300 z-30 shrink-0 ${
           sidebarCollapsed ? "w-20" : "w-64"
         }`}
       >
-        {/* Brand App Header block */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-800 shrink-0">
           {!sidebarCollapsed ? (
             <span className="text-sm font-black uppercase tracking-wider bg-linear-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
@@ -48,7 +45,6 @@ export default function DiscipleshipJourney() {
           </button>
         </div>
 
-        {/* Desktop Sidebar Back Button */}
         <div className="p-3 border-b border-slate-800/60">
           <Link
             to="/ministries"
@@ -61,7 +57,6 @@ export default function DiscipleshipJourney() {
           </Link>
         </div>
 
-        {/* Dynamic Navigation Map */}
         <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
           {navigationItems.map((item) => {
             const Icon = item.icon;
@@ -84,7 +79,7 @@ export default function DiscipleshipJourney() {
         </nav>
       </aside>
 
-      {/* ================= MOBILE NAVIGATION DRAWER ================= */}
+      {/* MOBILE NAVIGATION DRAWER */}
       {mobileSidebarOpen && (
         <div 
           className="fixed inset-0 bg-slate-950/60 z-50 md:hidden backdrop-blur-xs transition-opacity" 
@@ -125,13 +120,10 @@ export default function DiscipleshipJourney() {
         </div>
       )}
 
-      {/* ================= WORKSPACE PANEL FRAMING ================= */}
-      <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+      {/* WORKSPACE PANEL — KEY CHANGE: Removed max-w-1500 constraint, let it fill */}
+      <main className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
         
-        {/* Top Header Panel View */}
         <header className="h-16 bg-white border-b border-slate-200 shrink-0 px-4 flex items-center justify-between gap-4 sticky top-0 z-20">
-          
-          {/* Mobile Back Button & Drawer Toggle */}
           <div className="flex items-center gap-2 md:hidden">
             <Link
               to="/ministries"
@@ -148,15 +140,14 @@ export default function DiscipleshipJourney() {
             </button>
           </div>
           
-          {/* Context Header */}
           <div className="text-right ml-auto md:block">
             <span className="text-[10px] font-bold text-slate-400 tracking-wider uppercase block">Active Track</span>
             <span className="text-xs font-black text-slate-800">{currentMenu} Checking</span>
           </div>
         </header>
 
-        {/* Dynamic Inner Container Content Loader */}
-        <div className="p-4 xl:px-32 max-w-full w-full mx-auto flex-1 overflow-y-auto min-h-0">
+        {/* KEY CHANGE: Removed max-w-full w-full mx-auto constraints, let content dictate width naturally */}
+        <div className="flex-1 overflow-y-auto min-h-0 p-4 xl:px-8">
           {currentMenu === "Process" ? (
               <Process />
           ) : currentMenu === "Devotion" ? (

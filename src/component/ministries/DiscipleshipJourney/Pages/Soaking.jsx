@@ -199,7 +199,7 @@ export default function Soaking() {
           <>
             {/* ================= DESKTOP TABLE BREAKPOINT ================= */}
             <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[1100px] lg:min-w-0 lg:w-full">
+              <table className="w-full text-left border-collapse min-w-[1400px]">
                 <thead>
                   <tr className="bg-slate-900 border-b border-slate-800 text-[9px] font-black uppercase text-slate-300 tracking-wider text-center">
                     <th colSpan="6" className="py-2 border-r border-slate-800 text-left px-4">Demographics Information</th>

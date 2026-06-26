@@ -3,6 +3,7 @@ import Consolidation from "./Consolidation";
 import SoulWinning from "./SoulWinning";
 import Soaking from "./Soaking";
 import Schooling from "./Schooling";
+import Graduates from "./Graduates"; // NEW IMPORT
 import { supabase } from "../../../../Services/supabase";
 import {
   FaUsers,
@@ -15,19 +16,22 @@ import {
   FaGraduationCap,
   FaFemale,
   FaMale,
+  FaAward, // NEW ICON for Graduates
 } from "react-icons/fa";
 
 export default function Process() {
   const [activeTab, setActiveTab] = useState("Consolidation");
   const [loadingStats, setLoadingStats] = useState(true);
 
-  const tabs = ["Consolidation", "Soul Winning", "Soaking", "Schooling"];
+  // ADDED "Graduates" to tabs
+  const tabs = ["Consolidation", "Soul Winning", "Soaking", "Schooling", "Graduates"];
 
   const tabIcons = {
     Consolidation: FaLayerGroup,
     "Soul Winning": FaHeart,
     Soaking: FaWater,
     Schooling: FaGraduationCap,
+    Graduates: FaAward, // NEW
   };
 
   const tabColors = {
@@ -35,17 +39,23 @@ export default function Process() {
     "Soul Winning": { active: "bg-rose-500", light: "bg-rose-50", text: "text-rose-600", border: "border-rose-200", ring: "ring-rose-500", bg: "bg-rose-500/10" },
     Soaking: { active: "bg-cyan-500", light: "bg-cyan-50", text: "text-cyan-600", border: "border-cyan-200", ring: "ring-cyan-500", bg: "bg-cyan-500/10" },
     Schooling: { active: "bg-emerald-500", light: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-200", ring: "ring-emerald-500", bg: "bg-emerald-500/10" },
+    Graduates: { active: "bg-amber-500", light: "bg-amber-50", text: "text-amber-600", border: "border-amber-200", ring: "ring-amber-500", bg: "bg-amber-500/10" }, // NEW
   };
 
+  // ADDED graduates count
   const [stats, setStats] = useState({
     Consolidation: { total: 0, ready: 0, women: 0, men: 0 },
     "Soul Winning": { total: 0, ready: 0, women: 0, men: 0 },
     Soaking: { total: 0, ready: 0, women: 0, men: 0 },
     Schooling: { total: 0, ready: 0, women: 0, men: 0 },
+    Graduates: { total: 0, women: 0, men: 0 }, // NEW — no "ready" for graduates
   });
+
+  const [graduatesCount, setGraduatesCount] = useState(0); // NEW
 
   useEffect(() => {
     fetchPipelineStats();
+    fetchGraduatesCount(); // NEW
   }, [activeTab]);
 
   const parseBool = (val) => {
@@ -69,10 +79,19 @@ export default function Process() {
         "Soul Winning": { total: 0, ready: 0, women: 0, men: 0 },
         Soaking: { total: 0, ready: 0, women: 0, men: 0 },
         Schooling: { total: 0, ready: 0, women: 0, men: 0 },
+        Graduates: { total: 0, women: 0, men: 0 }, // NEW
       };
 
       if (data) {
         data.forEach((r) => {
+          // NEW: Count graduates separately
+          if (r.current_stage === "Graduated") {
+            newStats.Graduates.total += 1;
+            if (r.gender_category === "Women") newStats.Graduates.women += 1;
+            if (r.gender_category === "Men") newStats.Graduates.men += 1;
+            return; // Skip pipeline logic for graduates
+          }
+
           const stage = r.current_stage;
           if (!newStats[stage]) return;
 
@@ -114,11 +133,26 @@ export default function Process() {
     }
   }
 
+  // NEW: Separate fetch for graduates badge count
+  async function fetchGraduatesCount() {
+    try {
+      const { count, error } = await supabase
+        .from("consolidation_pipeline")
+        .select("*", { count: "exact", head: true })
+        .eq("current_stage", "Graduated");
+
+      if (error) throw error;
+      setGraduatesCount(count || 0);
+    } catch (err) {
+      console.error("Failed to load graduates count:", err.message);
+    }
+  }
+
   const totalAcrossAll = Object.values(stats).reduce((sum, s) => sum + s.total, 0);
   const readyAcrossAll = Object.values(stats).reduce((sum, s) => sum + s.ready, 0);
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fadeIn max-w-7xl mx-auto px-3 sm:px-4">
+    <div className="space-y-4 sm:space-y-6 animate-fadeIn">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
@@ -152,6 +186,16 @@ export default function Process() {
               </div>
               <div className="text-[9px] sm:text-[10px] font-bold text-emerald-500 uppercase">
                 Ready
+              </div>
+            </div>
+            {/* NEW: Graduates badge in header */}
+            <div className="h-3 sm:h-4 w-px bg-slate-200" />
+            <div className="text-right">
+              <div className="text-base sm:text-lg font-black text-amber-600 leading-none">
+                {graduatesCount}
+              </div>
+              <div className="text-[9px] sm:text-[10px] font-bold text-amber-500 uppercase">
+                Graduated
               </div>
             </div>
           </div>
@@ -196,9 +240,16 @@ export default function Process() {
                     <span className="text-[10px] font-bold text-slate-500">
                       {s.total}
                     </span>
-                    {s.ready > 0 && (
+                    {/* Only show "ready" badge for non-Graduate tabs */}
+                    {tab !== "Graduates" && s.ready > 0 && (
                       <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${colors.light} ${colors.text}`}>
                         {s.ready} ready
+                      </span>
+                    )}
+                    {/* Show "completed" badge for Graduates */}
+                    {tab === "Graduates" && s.total > 0 && (
+                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${colors.light} ${colors.text}`}>
+                        Done
                       </span>
                     )}
                   </div>
@@ -209,11 +260,11 @@ export default function Process() {
         </div>
       </div>
 
-      {/* DESKTOP: Grid cards */}
-      <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* DESKTOP: Grid cards — CHANGED to 5 columns on xl screens */}
+      <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {tabs.map((tab) => {
           const s = stats[tab];
-          const ratio = s.total > 0 ? (s.ready / s.total) * 100 : 0;
+          const ratio = s.total > 0 && tab !== "Graduates" ? (s.ready / s.total) * 100 : 0;
           const isActive = activeTab === tab;
           const colors = tabColors[tab];
           const Icon = tabIcons[tab];
@@ -248,7 +299,19 @@ export default function Process() {
                     />
                   </div>
                   <div className="flex items-center gap-1.5">
-                    {s.ready === s.total && s.total > 0 ? (
+                    {tab === "Graduates" ? (
+                      // Graduates badge
+                      s.total > 0 ? (
+                        <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-100">
+                          <FaCheckCircle size={10} />
+                          {s.total} Done
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+                          None
+                        </span>
+                      )
+                    ) : s.ready === s.total && s.total > 0 ? (
                       <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
                         <FaCheckCircle size={10} />
                         Complete
@@ -280,6 +343,7 @@ export default function Process() {
                   {tab === "Soul Winning" && "Evangelism & outreach training"}
                   {tab === "Soaking" && "Retreat & spiritual deepening"}
                   {tab === "Schooling" && "Leadership & ministry school"}
+                  {tab === "Graduates" && "Completed discipleship journey"} {/* NEW */}
                 </p>
 
                 <div className="flex items-center gap-4 mb-4">
@@ -312,32 +376,35 @@ export default function Process() {
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-500">
-                      Readiness
-                    </span>
-                    <span
-                      className={`font-bold ${
-                        ratio === 100 && s.total > 0
-                          ? "text-emerald-600"
-                          : "text-slate-700"
-                      }`}
-                    >
-                      {Math.round(ratio)}%
-                    </span>
+                {/* Only show progress bar for non-Graduate tabs */}
+                {tab !== "Graduates" && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-500">
+                        Readiness
+                      </span>
+                      <span
+                        className={`font-bold ${
+                          ratio === 100 && s.total > 0
+                            ? "text-emerald-600"
+                            : "text-slate-700"
+                        }`}
+                      >
+                        {Math.round(ratio)}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-700 ease-out ${
+                          ratio === 100 && s.total > 0
+                            ? "bg-emerald-500"
+                            : colors.active
+                        }`}
+                        style={{ width: `${ratio}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-700 ease-out ${
-                        ratio === 100 && s.total > 0
-                          ? "bg-emerald-500"
-                          : colors.active
-                      }`}
-                      style={{ width: `${ratio}%` }}
-                    />
-                  </div>
-                </div>
+                )}
 
                 {isActive && (
                   <div className="absolute bottom-4 right-4">
@@ -357,7 +424,7 @@ export default function Process() {
         {tabs.map((tab) => {
           if (tab !== activeTab) return null;
           const s = stats[tab];
-          const ratio = s.total > 0 ? (s.ready / s.total) * 100 : 0;
+          const ratio = s.total > 0 && tab !== "Graduates" ? (s.ready / s.total) * 100 : 0;
           const colors = tabColors[tab];
           const Icon = tabIcons[tab];
 
@@ -368,7 +435,6 @@ export default function Process() {
             >
               <div className={`h-1.5 w-full ${colors.active}`} />
               <div className="p-4">
-                {/* Header */}
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${colors.light}`}>
@@ -383,10 +449,22 @@ export default function Process() {
                         {tab === "Soul Winning" && "Evangelism & outreach training"}
                         {tab === "Soaking" && "Retreat & spiritual deepening"}
                         {tab === "Schooling" && "Leadership & ministry school"}
+                        {tab === "Graduates" && "Completed discipleship journey"} {/* NEW */}
                       </p>
                     </div>
                   </div>
-                  {s.ready === s.total && s.total > 0 ? (
+                  {tab === "Graduates" ? (
+                    s.total > 0 ? (
+                      <span className="flex items-center gap-1 text-[10px] font-black uppercase text-amber-600 bg-amber-50 px-2 py-1 rounded-full border border-amber-100">
+                        <FaCheckCircle size={10} />
+                        {s.total} Done
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-black uppercase text-slate-400 bg-slate-100 px-2 py-1 rounded-full border border-slate-200">
+                        None
+                      </span>
+                    )
+                  ) : s.ready === s.total && s.total > 0 ? (
                     <span className="flex items-center gap-1 text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-100">
                       <FaCheckCircle size={10} />
                       Complete
@@ -398,7 +476,6 @@ export default function Process() {
                   )}
                 </div>
 
-                {/* Stats Row */}
                 <div className="flex items-center gap-4 py-3 border-y border-slate-100">
                   <div className="flex-1 text-center">
                     <div className="text-xl font-black text-slate-800">{s.total}</div>
@@ -425,21 +502,22 @@ export default function Process() {
                   </div>
                 </div>
 
-                {/* Progress */}
-                <div className="mt-3 space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-500">Readiness</span>
-                    <span className={`font-bold ${ratio === 100 && s.total > 0 ? "text-emerald-600" : "text-slate-700"}`}>
-                      {Math.round(ratio)}%
-                    </span>
+                {tab !== "Graduates" && (
+                  <div className="mt-3 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-500">Readiness</span>
+                      <span className={`font-bold ${ratio === 100 && s.total > 0 ? "text-emerald-600" : "text-slate-700"}`}>
+                        {Math.round(ratio)}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-700 ease-out ${ratio === 100 && s.total > 0 ? "bg-emerald-500" : colors.active}`}
+                        style={{ width: `${ratio}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-700 ease-out ${ratio === 100 && s.total > 0 ? "bg-emerald-500" : colors.active}`}
-                      style={{ width: `${ratio}%` }}
-                    />
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           );
@@ -456,10 +534,12 @@ export default function Process() {
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-bold text-slate-800">
-              {activeTab} Module
+              {activeTab === "Graduates" ? "Graduates Registry" : `${activeTab} Module`} {/* NEW */}
             </h2>
             <p className="text-[10px] sm:text-xs text-slate-500 font-medium">
-              Manage and track member progress
+              {activeTab === "Graduates" 
+                ? "Members who have completed the full discipleship journey" 
+                : "Manage and track member progress"} {/* NEW */}
             </p>
           </div>
         </div>
@@ -468,6 +548,7 @@ export default function Process() {
           {activeTab === "Soul Winning" && <SoulWinning />}
           {activeTab === "Soaking" && <Soaking />}
           {activeTab === "Schooling" && <Schooling />}
+          {activeTab === "Graduates" && <Graduates />} {/* NEW */}
         </div>
       </div>
     </div>

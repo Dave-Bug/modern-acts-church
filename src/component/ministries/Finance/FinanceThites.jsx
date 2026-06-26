@@ -67,7 +67,8 @@ export default function FinanceTithes() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthString());
   const [expandedMembers, setExpandedMembers] = useState({});
   const [isSaving, setIsSaving] = useState(false);
-const [lastEditDate, setLastEditDate] = useState("");
+  const [lastEditDate, setLastEditDate] = useState("");
+  
   // Modal states
   const [showEditModal, setShowEditModal] = useState(false);
   const [showTitherRosterModal, setShowTitherRosterModal] = useState(false);
@@ -191,7 +192,6 @@ const [lastEditDate, setLastEditDate] = useState("");
     } else {
       setEditingTitheId(null);
       setEditAmount("");
-      // NEW: Use lastEditDate if within this week, otherwise week start
       const weekStart = `${selectedMonth}-${String(week.start).padStart(2, '0')}`;
       const weekEnd = `${selectedMonth}-${String(week.end).padStart(2, '0')}`;
       let defaultDate = weekStart;
@@ -209,79 +209,83 @@ const [lastEditDate, setLastEditDate] = useState("");
 
   /* ─── Today Tab: Inline Save ─── */
   const getTodayTithe = (memberId) => {
-  // Return the most recent record (highest ID) instead of the first found
-  const matches = tithes.filter(t => String(t.member_id) === String(memberId) && t.date === todayStr);
-  return matches.sort((a, b) => b.id - a.id)[0] || null;
-};
+    const matches = tithes.filter(t => String(t.member_id) === String(memberId) && t.date === todayStr);
+    return matches.sort((a, b) => b.id - a.id)[0] || null;
+  };
 
   const handleTodayAmountChange = (memberId, value) => {
     setTodayAmounts(prev => ({ ...prev, [memberId]: value }));
   };
 
   const todayVisibleMembers = activeTitherMembers.filter(m => {
-  const partner = getPartner(m);
-  if (!partner) return true; // single member — show
-  return parseInt(m.id) < parseInt(partner.id); // bound pair — only show primary (lower ID)
-});
+    const partner = getPartner(m);
+    if (!partner) return true; 
+    return parseInt(m.id) < parseInt(partner.id);
+  });
 
   const handleTodaySave = async (member) => {
-  const amount = parseFloat(todayAmounts[member.id]) || 0;
-  if (amount <= 0) return;
+    const amount = parseFloat(todayAmounts[member.id]) || 0;
+    if (amount <= 0) return;
 
-  setTodaySavingId(member.id);
-  try {
-    const partner = getPartner(member);
-    const payload = {
-      date: todayStr,
-      transaction_type: "Income",
-      category: "Tithes",
-      amount,
-      description: "None"
-    };
+    setTodaySavingId(member.id);
+    try {
+      const partner = getPartner(member);
+      
+      // Ensure member_id matches expected format (safely parsed to Int if your DB demands numbers)
+      const parsedMemberId = isNaN(member.id) ? member.id : parseInt(member.id, 10);
 
-    const existingPrimary = getTodayTithe(member.id);
-    const existingPartner = partner ? getTodayTithe(partner.id) : null;
+      const payload = {
+        date: todayStr,
+        transaction_type: "Income",
+        category: "Tithes",
+        amount: amount,
+        description: "None"
+      };
 
-    // Save/update for primary member
-    // After updating primary, delete any older duplicates for today
-    // Save/update for primary member
-    if (existingPrimary) {
-      await supabase.from("church_finance").update(payload).eq("id", existingPrimary.id);
-      await supabase.from("church_finance").delete()
-        .eq("category", "Tithes")
-        .eq("member_id", member.id)
-        .eq("date", todayStr)
-        .neq("id", existingPrimary.id);
-    } else {
-      await supabase.from("church_finance").insert([{ ...payload, member_id: member.id }]);
-    }
+      const existingPrimary = getTodayTithe(member.id);
+      const existingPartner = partner ? getTodayTithe(partner.id) : null;
 
-    // Save/update for partner
-    if (partner) {
-      if (existingPartner) {
-        await supabase.from("church_finance").update(payload).eq("id", existingPartner.id);
+      if (existingPrimary) {
+        const { error } = await supabase.from("church_finance").update(payload).eq("id", existingPrimary.id);
+        if (error) throw error;
         await supabase.from("church_finance").delete()
           .eq("category", "Tithes")
-          .eq("member_id", partner.id)
+          .eq("member_id", parsedMemberId)
           .eq("date", todayStr)
-          .neq("id", existingPartner.id);
+          .neq("id", existingPrimary.id);
       } else {
-        await supabase.from("church_finance").insert([{ ...payload, member_id: partner.id }]);
+        const { error } = await supabase.from("church_finance").insert([{ ...payload, member_id: parsedMemberId }]);
+        if (error) throw error;
       }
-    }
 
-    await fetchTithesData(true);
-    setTodayAmounts(prev => {
-      const next = { ...prev };
-      delete next[member.id];
-      return next;
-    });
-  } catch (err) {
-    alert(`Error saving: ${err.message}`);
-  } finally {
-    setTodaySavingId(null);
-  }
-};
+      if (partner) {
+        const parsedPartnerId = isNaN(partner.id) ? partner.id : parseInt(partner.id, 10);
+        if (existingPartner) {
+          const { error } = await supabase.from("church_finance").update(payload).eq("id", existingPartner.id);
+          if (error) throw error;
+          await supabase.from("church_finance").delete()
+            .eq("category", "Tithes")
+            .eq("member_id", parsedPartnerId)
+            .eq("date", todayStr)
+            .neq("id", existingPartner.id);
+        } else {
+          const { error } = await supabase.from("church_finance").insert([{ ...payload, member_id: parsedPartnerId }]);
+          if (error) throw error;
+        }
+      }
+
+      await fetchTithesData(true);
+      setTodayAmounts(prev => {
+        const next = { ...prev };
+        delete next[member.id];
+        return next;
+      });
+     } catch (err) {
+      alert(`Error saving: ${err.message}`);
+    } finally {
+      setTodaySavingId(null);
+    }
+  };
 
   const handleTodayKeyDown = (e, member) => {
     if (e.key === "Enter") handleTodaySave(member);
@@ -310,39 +314,48 @@ const [lastEditDate, setLastEditDate] = useState("");
     const partner = getPartner(member);
 
     try {
+      const parsedMemberId = isNaN(member.id) ? member.id : parseInt(member.id, 10);
       const payload = {
         date: editDate,
         transaction_type: "Income",
         category: "Tithes",
-        amount,
+        amount: amount,
         description: editDescription || "None"
       };
 
       if (saveMode === "add") {
-        await supabase.from("church_finance").insert([{ ...payload, member_id: member.id }]);
+        const { error } = await supabase.from("church_finance").insert([{ ...payload, member_id: parsedMemberId }]);
+        if (error) throw error;
         if (partner) {
-          await supabase.from("church_finance").insert([{ ...payload, member_id: partner.id }]);
+          const parsedPartnerId = isNaN(partner.id) ? partner.id : parseInt(partner.id, 10);
+          const { error: pErr } = await supabase.from("church_finance").insert([{ ...payload, member_id: parsedPartnerId }]);
+          if (pErr) throw pErr;
         }
       } else {
         if (editingTitheId) {
-          await supabase.from("church_finance").update(payload).eq("id", editingTitheId);
+          const { error } = await supabase.from("church_finance").update(payload).eq("id", editingTitheId);
+          if (error) throw error;
           if (partner) {
             const partnerRecords = findWeekTithes(partner.id, selectedWeek)
               .filter(t => t.date === originalEditDate);
             for (const rec of partnerRecords) {
-              await supabase.from("church_finance").update(payload).eq("id", rec.id);
+              const { error: pErr } = await supabase.from("church_finance").update(payload).eq("id", rec.id);
+              if (pErr) throw pErr;
             }
           }
         } else {
-          await supabase.from("church_finance").insert([{ ...payload, member_id: member.id }]);
+          const { error } = await supabase.from("church_finance").insert([{ ...payload, member_id: parsedMemberId }]);
+          if (error) throw error;
           if (partner) {
-            await supabase.from("church_finance").insert([{ ...payload, member_id: partner.id }]);
+            const parsedPartnerId = isNaN(partner.id) ? partner.id : parseInt(partner.id, 10);
+            const { error: pErr } = await supabase.from("church_finance").insert([{ ...payload, member_id: parsedPartnerId }]);
+            if (pErr) throw pErr;
           }
         }
       }
 
       await fetchTithesData(true);
-      setLastEditDate(editDate);  // Remember this date for next member
+      setLastEditDate(editDate);  
       setShowEditModal(false);
       setEditAmount(""); setEditDescription(""); setEditingTitheId(null);
       setSelectedMember(null); setSelectedWeek(null);
@@ -378,8 +391,6 @@ const [lastEditDate, setLastEditDate] = useState("");
         const secondary = parseInt(mid) < parseInt(partner.id) ? partner : m;
         const primaryGross = parseFloat(primary.gross || 0);
 
-        // FIX: Use only primary member's records. Save logic keeps both partners in sync,
-        // so combining + deduping was double-counting / collapsing valid multiple transactions.
         const primaryTithes = sourceTithes.filter(t => String(t.member_id) === String(primary.id));
 
         if (isMonthly) {
@@ -463,7 +474,6 @@ const [lastEditDate, setLastEditDate] = useState("");
       }
     });
 
-    // Anonymous
     const unassigned = sourceTithes.filter(t => !t.member_id);
     if (unassigned.length > 0) {
       if (isMonthly) {
@@ -519,25 +529,21 @@ const [lastEditDate, setLastEditDate] = useState("");
     `${m.first_name} ${m.last_name}`.toLowerCase().includes(rosterSearchQuery.toLowerCase())
   );
 
-  // Today tab data — deduplicated total
   const todayTotal = (() => {
-  let total = 0;
-  activeTitherMembers.forEach(m => {
-    const partner = getPartner(m);
-    // Only count if no partner (single) OR this member is the primary (lower ID)
-    if (!partner || parseInt(m.id) < parseInt(partner.id)) {
-      const t = getTodayTithe(m.id);
-      if (t) total += parseFloat(t.amount);
-    }
-  });
-  return total;
-})();
+    let total = 0;
+    activeTitherMembers.forEach(m => {
+      const partner = getPartner(m);
+      if (!partner || parseInt(m.id) < parseInt(partner.id)) {
+        const t = getTodayTithe(m.id);
+        if (t) total += parseFloat(t.amount);
+      }
+    });
+    return total;
+  })();
 
   /* ─── Excel Export ─── */
   const handleExportExcel = async () => {
     const workbook = new ExcelJS.Workbook();
-
-    // Monthly sheet
     const wsM = workbook.addWorksheet("Monthly Tracker View");
     wsM.columns = [{ key: "name", width: 26 }, ...weeks.map((_, i) => ({ key: `w${i}`, width: 13 })),
       { key: "total", width: 16 }, { key: "goal", width: 14 }, { key: "status", width: 13 }];
@@ -571,7 +577,6 @@ const [lastEditDate, setLastEditDate] = useState("");
       });
     });
 
-    // Annual sheet
     const wsA = workbook.addWorksheet("Annual 12-Month Matrix");
     wsA.columns = [{ key: "name", width: 26 }, ...MONTH_NAMES.map(m => ({ key: m.toLowerCase(), width: 13 })),
       { key: "annualSum", width: 16 }, { key: "score", width: 14 }];
@@ -617,7 +622,7 @@ const [lastEditDate, setLastEditDate] = useState("");
       `Tithes_Master_Report_${currentYear}.xlsx`);
   };
 
-  /* ─── RENDER ─── */
+  /* ─── RENDER HELPERS ─── */
   const TabButton = ({ id, icon: Icon, label }) => (
     <button onClick={() => setActiveTab(id)}
       className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer ${activeTab === id ? "border-blue-600 text-blue-600" : "border-transparent text-slate-400 hover:text-slate-600"}`}>
@@ -634,7 +639,6 @@ const [lastEditDate, setLastEditDate] = useState("");
 
   return (
     <div className="min-h-screen bg-[#f5f7fb] text-slate-900 antialiased">
-      {/* Back Button */}
       <div className="fixed top-3 left-3 z-50 sm:top-4 sm:left-4">
         <Link to="/ministries/finance" className="flex items-center gap-2 bg-white/90 backdrop-blur border border-slate-200 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 hover:text-blue-600 transition-colors shadow-sm">
           <FaHome /><span className="hidden sm:inline">Back</span>
@@ -642,7 +646,6 @@ const [lastEditDate, setLastEditDate] = useState("");
       </div>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-8 pt-14 sm:pt-20">
-        {/* Header */}
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <h1 className="text-xl sm:text-3xl md:text-4xl font-black tracking-tight">
             Tithe <span className="text-blue-600">Tracker</span>
@@ -654,14 +657,12 @@ const [lastEditDate, setLastEditDate] = useState("");
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="flex border-b border-slate-200 mb-4 gap-1 sm:gap-2">
           <TabButton id="today" icon={FaCalendarDay} label="Today" />
           <TabButton id="monthly" icon={FaTable} label="Monthly" />
           <TabButton id="annual" icon={FaCalendarAlt} label="Annual" />
         </div>
 
-        {/* Stats */}
         {activeTab === "monthly" && (
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3 mb-4">
             <StatCard label="Met" value={achievedCount} color="text-emerald-600" />
@@ -685,7 +686,6 @@ const [lastEditDate, setLastEditDate] = useState("");
           </div>
         )}
 
-        {/* Sticky Search */}
         <div className="sticky top-0 z-30 bg-[#f5f7fb] py-2 mb-2 -mx-3 px-3 sm:-mx-6 sm:px-6">
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <div className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex items-center gap-2 flex-1">
@@ -706,9 +706,7 @@ const [lastEditDate, setLastEditDate] = useState("");
           </div>
         </div>
 
-        {/* ═══════════════════════════════════════════════════════════════
-            TODAY TAB
-            ═══════════════════════════════════════════════════════════════ */}
+        {/* TODAY TAB CONTENT */}
         {activeTab === "today" && (
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
             {loading ? (
@@ -729,8 +727,8 @@ const [lastEditDate, setLastEditDate] = useState("");
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-sm">
                     {todayVisibleMembers.filter(m => {
-  const fullName = `${m.first_name} ${m.last_name}`.toLowerCase();
-  return fullName.includes(searchQuery.toLowerCase());
+                      const fullName = `${m.first_name} ${m.last_name}`.toLowerCase();
+                      return fullName.includes(searchQuery.toLowerCase());
                     }).map(m => {
                       const existing = getTodayTithe(m.id);
                       const partner = getPartner(m);
@@ -790,12 +788,9 @@ const [lastEditDate, setLastEditDate] = useState("");
           </div>
         )}
 
-        {/* ═══════════════════════════════════════════════════════════════
-            MONTHLY TAB
-            ═══════════════════════════════════════════════════════════════ */}
+        {/* MONTHLY TAB CONTENT */}
         {activeTab === "monthly" && (
           <>
-            {/* Mobile Cards */}
             <div className="lg:hidden space-y-3 mb-4">
               {loading ? (
                 <div className="flex items-center justify-center py-16">
@@ -891,7 +886,6 @@ const [lastEditDate, setLastEditDate] = useState("");
               })}
             </div>
 
-            {/* Desktop Table */}
             <div className="hidden lg:block bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
               {loading ? (
                 <div className="flex items-center justify-center py-16">
@@ -1006,9 +1000,7 @@ const [lastEditDate, setLastEditDate] = useState("");
           </>
         )}
 
-        {/* ═══════════════════════════════════════════════════════════════
-            ANNUAL TAB
-            ═══════════════════════════════════════════════════════════════ */}
+        {/* ANNUAL TAB CONTENT */}
         {activeTab === "annual" && (
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
             {loading ? (
@@ -1067,9 +1059,7 @@ const [lastEditDate, setLastEditDate] = useState("");
         )}
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════
-          ROSTER MODAL
-          ═══════════════════════════════════════════════════════════════ */}
+      {/* ROSTER MODAL */}
       {showTitherRosterModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-2xl w-full max-h-[90vh] sm:max-h-[85vh] flex flex-col">
@@ -1121,16 +1111,14 @@ const [lastEditDate, setLastEditDate] = useState("");
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          WEEK EDIT MODAL
-          ═══════════════════════════════════════════════════════════════ */}
+      {/* WEEK EDIT MODAL */}
       {showEditModal && selectedMember && selectedWeek && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm">
           <form onSubmit={handleSaveTithe} className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
             <div className="p-3 sm:p-4 bg-slate-900 flex items-center justify-between">
               <div>
-                <h3 className="font-black text-xs sm:text-sm uppercase tracking-wider">
-                  {editingTitheId ? "Update" : "Set"} Week TitheS
+                <h3 className="font-black text-xs sm:text-sm text-white uppercase tracking-wider">
+                  {editingTitheId ? "Update" : "Set"} Week Tithes
                 </h3>
                 <p className="text-[10px] text-slate-400 mt-0.5">{selectedMember.first_name} {selectedMember.last_name}</p>
               </div>
@@ -1161,7 +1149,7 @@ const [lastEditDate, setLastEditDate] = useState("");
                       onClick={() => setSaveMode("overwrite")}
                       className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
                         saveMode === "overwrite"
-                          ? "bg-blue-600 text-emerald-600"
+                          ? "bg-blue-600 text-white"
                           : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
                       }`}
                     >
@@ -1172,7 +1160,7 @@ const [lastEditDate, setLastEditDate] = useState("");
                       onClick={() => setSaveMode("add")}
                       className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
                         saveMode === "add"
-                          ? "bg-emerald-600 text-emerald-600"
+                          ? "bg-emerald-600 text-white"
                           : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
                       }`}
                     >
@@ -1259,7 +1247,7 @@ const [lastEditDate, setLastEditDate] = useState("");
               )}
               <button type="button" onClick={() => setShowEditModal(false)} className="px-3 sm:px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 cursor-pointer">Cancel</button>
               <button type="submit" disabled={isSaving}
-                className={`bg-blue-600 hover:bg-blue-700 px-4 sm:px-5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                className={`bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 {isSaving ? 'Saving...' : `${saveMode === "add" ? "Add" : (editingTitheId ? "Update" : "Set")} Amount`}
               </button>
             </div>
@@ -1269,3 +1257,4 @@ const [lastEditDate, setLastEditDate] = useState("");
     </div>
   );
 }
+
