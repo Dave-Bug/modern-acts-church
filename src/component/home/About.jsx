@@ -6,6 +6,8 @@ import {
   FaHeart,
   FaBible,
   FaHandsHelping,
+  FaEye,
+  FaBullseye,
 } from "react-icons/fa";
 
 import aboutImage from "../../assets/about.jpg";
@@ -28,6 +30,27 @@ const values = [
     title: "Make Disciples",
     description:
       "We guide people to follow Jesus and grow deeper in His Word daily.",
+  },
+];
+
+const missionVision = [
+  {
+    icon: <FaBullseye size={18} />,
+    label: "Mission",
+    text: "To glorify God by making disciples who love God, love people, and transform communities.",
+    accent: "text-sky-400",
+    border: "border-sky-500/20",
+    bg: "from-sky-500/15 to-blue-600/15",
+    hover: "group-hover:bg-sky-500",
+  },
+  {
+    icon: <FaEye size={18} />,
+    label: "Vision",
+    text: "To see a vibrant, Spirit-filled community impacting Olongapo City and beyond with the Gospel.",
+    accent: "text-purple-400",
+    border: "border-purple-500/20",
+    bg: "from-purple-500/15 to-pink-600/15",
+    hover: "group-hover:bg-purple-500",
   },
 ];
 
@@ -56,106 +79,167 @@ export default function About() {
             lg:grid-cols-2
             gap-14
             lg:gap-24
-            items-center
+            items-start
           "
         >
 
-          {/* IMAGE SIDE */}
-          <div className="relative group">
+          {/* LEFT SIDE: Image + Mission/Vision */}
+          <div className="space-y-6">
 
-            {/* Main Image */}
-            <div
-              className="
-                relative
-                overflow-hidden
-                rounded-[28px]
-                aspect-[4/5]
-                max-w-sm
-                sm:max-w-md
-                mx-auto
-                lg:mx-0
-                shadow-2xl
-                border
-                border-white/10
-              "
-            >
-              <img
-                src={aboutImage}
-                alt="Modern Acts Church"
+            {/* IMAGE */}
+            <div className="relative group">
+
+              {/* Main Image */}
+              <div
                 className="
-                  w-full
-                  h-full
-                  object-cover
-                  transition-transform
-                  duration-700
-                  group-hover:scale-105
+                  relative
+                  overflow-hidden
+                  rounded-[28px]
+                  aspect-[4/5]
+                  max-w-sm
+                  sm:max-w-md
+                  mx-auto
+                  lg:mx-0
+                  shadow-2xl
+                  border
+                  border-white/10
                 "
-              />
+              >
+                <img
+                  src={aboutImage}
+                  alt="Modern Acts Church"
+                  className="
+                    w-full
+                    h-full
+                    object-cover
+                    transition-transform
+                    duration-700
+                    group-hover:scale-105
+                  "
+                />
 
-              {/* Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
+                {/* Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
 
-              {/* Floating Card */}
+                {/* Floating Card */}
+                <div
+                  className="
+                    absolute
+                    bottom-4
+                    left-4
+                    right-4
+                    rounded-2xl
+                    border
+                    border-white/10
+                    bg-black/35
+                    backdrop-blur-xl
+                    p-4
+                    sm:p-5
+                  "
+                >
+                  <p
+                    className="
+                      text-sky-400
+                      text-[10px]
+                      sm:text-xs
+                      uppercase
+                      tracking-[0.25em]
+                      font-semibold
+                      mb-1
+                    "
+                  >
+                    Est. 2023
+                  </p>
+
+                  <h3
+                    className="
+                      text-white
+                      font-bold
+                      text-base
+                      sm:text-lg
+                    "
+                  >
+                    Growing in Faith Together
+                  </h3>
+                </div>
+              </div>
+
+              {/* Decorative Frame */}
               <div
                 className="
                   absolute
-                  bottom-4
-                  left-4
-                  right-4
-                  rounded-2xl
+                  -top-4
+                  -right-4
+                  w-full
+                  h-full
+                  rounded-[28px]
                   border
-                  border-white/10
-                  bg-black/35
-                  backdrop-blur-xl
-                  p-4
-                  sm:p-5
+                  border-sky-500/20
+                  -z-10
                 "
-              >
-                <p
-                  className="
-                    text-sky-400
-                    text-[10px]
-                    sm:text-xs
-                    uppercase
-                    tracking-[0.25em]
-                    font-semibold
-                    mb-1
-                  "
-                >
-                  Est. 2023
-                </p>
-
-                <h3
-                  className="
-                    text-white
-                    font-bold
-                    text-base
-                    sm:text-lg
-                  "
-                >
-                  Growing in Faith Together
-                </h3>
-              </div>
+              />
             </div>
 
-            {/* Decorative Frame */}
-            <div
-              className="
-                absolute
-                -top-4
-                -right-4
-                w-full
-                h-full
-                rounded-[28px]
-                border
-                border-sky-500/20
-                -z-10
-              "
-            />
+            {/* MISSION & VISION (Below Photo) */}
+            <div className="max-w-sm sm:max-w-md mx-auto lg:mx-0 space-y-3">
+              {missionVision.map((item, index) => (
+                <div
+                  key={index}
+                  className="
+                    group
+                    flex
+                    items-start
+                    gap-3
+                    rounded-2xl
+                    border
+                    border-white/5
+                    bg-white/[0.03]
+                    p-4
+                    transition-all
+                    duration-300
+                    hover:border-white/10
+                    hover:bg-white/[0.05]
+                  "
+                >
+                  <div
+                    className={`
+                      flex-shrink-0
+                      w-10
+                      h-10
+                      rounded-xl
+                      flex
+                      items-center
+                      justify-center
+                      bg-gradient-to-br
+                      ${item.bg}
+                      ${item.accent}
+                      border
+                      ${item.border}
+                      transition-all
+                      duration-300
+                      group-hover:scale-110
+                      ${item.hover}
+                      group-hover:text-white
+                    `}
+                  >
+                    {item.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`${item.accent} text-[10px] uppercase tracking-[0.25em] font-semibold mb-0.5`}>
+                      {item.label}
+                    </p>
+                    <p className="text-slate-300 text-sm leading-relaxed">
+                      {item.text}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
           </div>
 
-          {/* CONTENT SIDE */}
-          <div>
+          {/* RIGHT SIDE: Content (unchanged) */}
+          <div className="lg:pt-8">
 
             {/* Small Label */}
             <div className="flex items-center gap-3 mb-6">

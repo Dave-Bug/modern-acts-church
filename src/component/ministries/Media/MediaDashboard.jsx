@@ -1,8 +1,9 @@
+// MediaDashboard.jsx
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "../../../Services/supabase";
-import { FaHome } from "react-icons/fa";
-import { Link } from "react-router-dom";
+import { FaHome, FaLock } from "react-icons/fa";
+import { Link as RouterLink } from "react-router-dom";
 
 export default function MediaDashboard() {
   const [pendingCount, setPendingCount] = useState(0);
@@ -15,6 +16,11 @@ export default function MediaDashboard() {
   const navigate = useNavigate();
   const [memberCount, setMemberCount] = useState(0);
 
+  // 🔒 Role state
+  const [userStatus, setUserStatus] = useState("Viewer"); // default
+  const [userMinistry, setUserMinistry] = useState("");
+  const [isMediaMember, setIsMediaMember] = useState(false);
+
   const [showModal, setShowModal] = useState(false);
   const [personnel, setPersonnel] = useState([]);
 
@@ -26,6 +32,31 @@ export default function MediaDashboard() {
     created: "",
     dueTo: "",
   });
+
+  // 🔒 Check user role on mount
+  useEffect(() => {
+    const checkUserRole = () => {
+      try {
+        const stored = localStorage.getItem("church_session_user");
+        if (!stored) return;
+
+        const parsed = JSON.parse(stored);
+        setUserStatus(parsed.status || "Viewer");
+        setUserMinistry(parsed.ministry || "");
+
+        // Check if user has Multimedia in their ministry
+        const ministries = (parsed.ministry || "").toLowerCase();
+        setIsMediaMember(ministries.includes("multimedia"));
+      } catch (err) {
+        console.error("Role check failed:", err);
+      }
+    };
+    checkUserRole();
+  }, []);
+
+  const isAdmin = userStatus.toLowerCase() === "admin";
+  const isEditor = isAdmin || userStatus.toLowerCase() === "editor";
+  const isViewer = !isEditor; // Viewer or any other role
 
   useEffect(() => {
     fetchPersonnel();
@@ -195,6 +226,26 @@ export default function MediaDashboard() {
     return "bg-slate-100 text-slate-500";
   };
 
+  // 🔒 Navigation handler with role check
+  const handleNavigate = (path) => {
+    if (isViewer) {
+      // Viewers can see the page but can't perform actions there
+      // Still allow navigation to view details
+      navigate(path);
+    } else {
+      navigate(path);
+    }
+  };
+
+  // 🔒 Create task handler
+  const handleCreateTask = () => {
+    if (isViewer) {
+      alert("View-only access: You cannot create tasks. Contact an Admin or Editor.");
+      return;
+    }
+    setShowModal(true);
+  };
+
   return (
     <div className="min-h-screen bg-[#f5f7fb] text-slate-900">
       {/* Back Button */}
@@ -208,6 +259,20 @@ export default function MediaDashboard() {
         </Link>
       </div>
 
+      {/* 🔒 Role Badge */}
+      <div className="fixed top-4 right-4 z-50">
+        <div className={`
+          flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider border
+          ${isAdmin ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+            isEditor ? "bg-blue-50 text-blue-700 border-blue-200" :
+            "bg-slate-100 text-slate-500 border-slate-200"}
+        `}>
+          {isViewer && <FaLock className="text-[10px]" />}
+          {userStatus}
+          {!isMediaMember && <span className="text-red-500 ml-1">(Not Media)</span>}
+        </div>
+      </div>
+
       <div className="max-w-6xl mx-auto px-4 py-10 md:py-14 pt-16">
         {/* Header */}
         <div className="text-center mb-8 md:mb-10">
@@ -218,10 +283,15 @@ export default function MediaDashboard() {
             Media <span className="text-blue-600">Ministry</span>
           </h1>
           <p className="text-slate-500 text-xs md:text-sm mt-2">Dashboard Overview</p>
+          {isViewer && (
+            <p className="text-amber-600 text-xs mt-2 font-medium">
+              🔒 You have view-only access. Contact an Admin for editing privileges.
+            </p>
+          )}
         </div>
 
         {/* Modal */}
-        {showModal && (
+        {showModal && isEditor && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div
               className="absolute inset-0 bg-black/50"
@@ -331,9 +401,14 @@ export default function MediaDashboard() {
 
         {/* Stats Cards - Mobile: 2 cols, Desktop: 4 cols */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 mb-8">
+          {/* Pending Card */}
           <div 
-            onClick={() => navigate("/ministries/media/pending")}
-            className="bg-white/80 backdrop-blur border border-slate-200 rounded-xl p-4 md:p-5 hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+            onClick={() => handleNavigate("/ministries/media/pending")}
+            className={`
+              bg-white/80 backdrop-blur border border-slate-200 rounded-xl p-4 md:p-5 
+              transition-all duration-300
+              ${isEditor ? "hover:shadow-md hover:-translate-y-1 cursor-pointer" : "cursor-default opacity-90"}
+            `}
           >
             <div className="flex items-start justify-between">
               <div>
@@ -350,9 +425,14 @@ export default function MediaDashboard() {
             </div>
           </div>
 
+          {/* In Progress Card */}
           <div 
-            onClick={() => navigate("/ministries/media/inprogress")}
-            className="bg-white/80 backdrop-blur border border-slate-200 rounded-xl p-4 md:p-5 hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+            onClick={() => handleNavigate("/ministries/media/inprogress")}
+            className={`
+              bg-white/80 backdrop-blur border border-slate-200 rounded-xl p-4 md:p-5 
+              transition-all duration-300
+              ${isEditor ? "hover:shadow-md hover:-translate-y-1 cursor-pointer" : "cursor-default opacity-90"}
+            `}
           >
             <div className="flex items-start justify-between">
               <div>
@@ -369,9 +449,14 @@ export default function MediaDashboard() {
             </div>
           </div>
 
+          {/* Completed Card */}
           <div 
-            onClick={() => navigate("/ministries/media/completed")}
-            className="bg-white/80 backdrop-blur border border-slate-200 rounded-xl p-4 md:p-5 hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+            onClick={() => handleNavigate("/ministries/media/completed")}
+            className={`
+              bg-white/80 backdrop-blur border border-slate-200 rounded-xl p-4 md:p-5 
+              transition-all duration-300
+              ${isEditor ? "hover:shadow-md hover:-translate-y-1 cursor-pointer" : "cursor-default opacity-90"}
+            `}
           >
             <div className="flex items-start justify-between">
               <div>
@@ -388,9 +473,15 @@ export default function MediaDashboard() {
             </div>
           </div>
 
+          {/* Team Members Card */}
           <div
-            onClick={() => navigate("/ministries/media/personnel")}
-            className="bg-blue-600 rounded-xl p-4 md:p-5 text-white cursor-pointer hover:bg-blue-700 hover:shadow-md hover:-translate-y-1 transition-all duration-300"
+            onClick={() => handleNavigate("/ministries/media/personnel")}
+            className={`
+              rounded-xl p-4 md:p-5 text-white transition-all duration-300
+              ${isEditor 
+                ? "bg-blue-600 hover:bg-blue-700 hover:shadow-md hover:-translate-y-1 cursor-pointer" 
+                : "bg-blue-500/80 cursor-default"}
+            `}
           >
             <div className="flex items-start justify-between">
               <div>
@@ -429,7 +520,7 @@ export default function MediaDashboard() {
                 tasks.map((task) => (
                   <div
                     key={task.id}
-                    className="flex items-center gap-3 md:gap-4 p-3 md:p-4 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0 cursor-pointer"
+                    className="flex items-center gap-3 md:gap-4 p-3 md:p-4 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0"
                   >
                     <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getStatusColor(task.status)}`} />
 
@@ -485,27 +576,34 @@ export default function MediaDashboard() {
             <div className="bg-white/80 backdrop-blur border border-slate-200 rounded-xl p-4 md:p-5">
               <h3 className="font-bold text-slate-900 mb-4 text-base">Quick Actions</h3>
               <div className="space-y-3">
+                {/* Create Task Button */}
                 <button
-              onClick={() => setShowModal(true)}
-              className="w-full flex items-center gap-4 p-4 rounded-xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all text-left group"
-            >
-              {/* Left Icon Container */}
-              <div className="w-10 h-10 bg-blue-50 group-hover:bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors">
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </div>
-              
-              {/* Text Layout */}
-              <div className="space-y-0.5">
-                <p className="text-sm text-slate-800 font-semibold group-hover:text-blue-600 transition-colors">
-                  Create Task
-                </p>
-                <p className="text-xs text-slate-500">
-                  Add new ministry task
-                </p>
-              </div>
-            </button>
+                  onClick={handleCreateTask}
+                  className={`
+                    w-full flex items-center gap-4 p-4 rounded-xl border shadow-sm transition-all text-left group
+                    ${isEditor 
+                      ? "bg-white border-slate-200 hover:shadow-md hover:border-blue-300 cursor-pointer" 
+                      : "bg-slate-50 border-slate-100 cursor-not-allowed opacity-70"}
+                  `}
+                >
+                  <div className={`
+                    w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors
+                    ${isEditor ? "bg-blue-50 group-hover:bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-400"}
+                  `}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className={`text-sm font-semibold transition-colors ${isEditor ? "text-slate-800 group-hover:text-blue-600" : "text-slate-500"}`}>
+                      Create Task
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {isEditor ? "Add new ministry task" : "View-only: Cannot create"}
+                    </p>
+                  </div>
+                  {isViewer && <FaLock className="ml-auto text-slate-300 text-xs" />}
+                </button>
               </div>
             </div>
           </div>

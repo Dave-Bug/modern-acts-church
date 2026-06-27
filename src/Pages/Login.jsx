@@ -39,11 +39,32 @@ export default function Login({ onAuthSuccess }) {
         setShowSuggestions(false);
 
         if (isRegistering) {
-          const { data, error } = await supabase
+          // 1. Fetch existing accounts to know who to EXCLUDE
+          const { data: existingAccounts, error: authError } = await supabase
+            .from("church_auth")
+            .select("name");
+
+          // 2. Fetch all valid members
+          const { data: allMembers, error: membersError } = await supabase
             .from("usher_members")
             .select("first_name, last_name, ministry");
-          if (!error && data) setAllDbRecords(data);
+
+          if (!membersError && allMembers && !authError && existingAccounts) {
+            // Create a list of already registered names (lowercase for easy matching)
+            const registeredNames = existingAccounts.map((user) => 
+              user.name.toLowerCase().trim()
+            );
+
+            // 3. Filter members to ONLY include those NOT in registeredNames
+            const unregisteredMembers = allMembers.filter((member) => {
+              const fullName = `${member.first_name} ${member.last_name}`.toLowerCase().trim();
+              return !registeredNames.includes(fullName); // Keep if NOT registered
+            });
+
+            setAllDbRecords(unregisteredMembers);
+          }
         } else {
+          // Login mode: Just fetch everyone who has an account
           const { data, error } = await supabase
             .from("church_auth")
             .select("name, ministry");
@@ -53,6 +74,7 @@ export default function Login({ onAuthSuccess }) {
         console.error("Failed to pre-fetch directory mapping:", err);
       }
     };
+    
     fetchDirectoryData();
   }, [isRegistering]);
 
@@ -73,7 +95,7 @@ export default function Login({ onAuthSuccess }) {
 
     if (!val.trim()) {
       setSuggestions([]);
-      setShowSuggestions(false);
+      setShowSuggestions(false);a
       return;
     }
 
@@ -134,7 +156,7 @@ export default function Login({ onAuthSuccess }) {
 
       if (error) throw error;
       if (!userRecord) {
-        setErrorMessage("Invalid credentials combination profile.");
+        setErrorMessage("Invalid profile credention.");
         return;
       }
       if (userRecord.access !== "Approved") {

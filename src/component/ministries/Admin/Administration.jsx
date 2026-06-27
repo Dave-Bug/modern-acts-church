@@ -180,7 +180,6 @@ export default function AdministrationDashboardHub() {
               {loading ? "Counting..." : !isAdmin ? "Restricted Access" : `${totalPendingUsers} Pending Requests`}
             </span>
           </button>
-
         </div>
       </div>
     </div>

@@ -371,7 +371,7 @@ export default function UsherDashboard() {
 
           <button
             onClick={handleExportExcel}
-            className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 px-4 py-3 rounded-2xl font-bold text-sm shadow-xs transition-all cursor-pointer active:scale-[0.98]"
+            className="flex items-center justify-center gap-2 bg-emerald-600 text-emerald-600 hover:bg-emerald-500 px-4 py-3 rounded-2xl font-bold text-sm shadow-xs transition-all cursor-pointer active:scale-[0.98]"
           >
             <FaFileExcel size={15} />
             <span>Export Excel</span>

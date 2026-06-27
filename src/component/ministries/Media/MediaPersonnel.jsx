@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../Services/supabase";
-import { FaHome } from "react-icons/fa";
+import { FaHome, FaLock } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
 export default function MediaPersonnel() {
@@ -8,6 +8,10 @@ export default function MediaPersonnel() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+
+  // 🔒 Role state
+  const [userStatus, setUserStatus] = useState("Viewer");
+  const [isEditor, setIsEditor] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -31,8 +35,25 @@ export default function MediaPersonnel() {
   ];
 
   useEffect(() => {
+    // 🔒 Check role
+    try {
+      const stored = localStorage.getItem("church_session_user");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const status = parsed.status || "Viewer";
+        setUserStatus(status);
+        setIsEditor(
+          status.toLowerCase() === "admin" ||
+          status.toLowerCase() === "editor"
+        );
+      }
+    } catch (err) {
+      console.error("Role check failed:", err);
+    }
     loadMembers();
   }, []);
+
+  const isViewer = !isEditor;
 
   const loadMembers = async () => {
     setLoading(true);
@@ -63,6 +84,10 @@ export default function MediaPersonnel() {
   };
 
   const handleSubmit = async () => {
+    if (isViewer) {
+      alert("View-only access: You cannot modify personnel.");
+      return;
+    }
     if (!form.name.trim()) {
       alert("Name is required");
       return;
@@ -82,10 +107,7 @@ export default function MediaPersonnel() {
         })
         .eq("id", editingId);
 
-      if (error) {
-        alert(error.message);
-        return;
-      }
+      if (error) { alert(error.message); return; }
     } else {
       const { error } = await supabase.from("media_personnel").insert([
         {
@@ -99,10 +121,7 @@ export default function MediaPersonnel() {
         },
       ]);
 
-      if (error) {
-        alert(error.message);
-        return;
-      }
+      if (error) { alert(error.message); return; }
     }
 
     resetForm();
@@ -111,6 +130,7 @@ export default function MediaPersonnel() {
   };
 
   const startEdit = (member) => {
+    if (isViewer) return;
     setForm({
       name: member.name || "",
       age: member.age || "",
@@ -126,6 +146,10 @@ export default function MediaPersonnel() {
   };
 
   const deleteMember = async (id) => {
+    if (isViewer) {
+      alert("View-only access: You cannot delete personnel.");
+      return;
+    }
     if (!window.confirm("Delete this member?")) return;
 
     const { error } = await supabase
@@ -133,11 +157,7 @@ export default function MediaPersonnel() {
       .delete()
       .eq("id", id);
 
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
+    if (error) { alert(error.message); return; }
     loadMembers();
   };
 
@@ -156,12 +176,7 @@ export default function MediaPersonnel() {
   };
 
   const getInitials = (name) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
+    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   };
 
   return (
@@ -177,6 +192,19 @@ export default function MediaPersonnel() {
         </Link>
       </div>
 
+      {/* 🔒 Role Badge */}
+      <div className="fixed top-4 right-4 z-50">
+        <div className={`
+          flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider border
+          ${!isViewer
+            ? "bg-blue-50 text-blue-700 border-blue-200"
+            : "bg-slate-100 text-slate-500 border-slate-200"}
+        `}>
+          {isViewer && <FaLock className="text-[10px]" />}
+          {userStatus}
+        </div>
+      </div>
+
       <div className="max-w-6xl mx-auto px-4 py-10 md:py-14 pt-16">
         {/* Header */}
         <div className="text-center mb-8 md:mb-10">
@@ -189,21 +217,25 @@ export default function MediaPersonnel() {
           <p className="text-slate-500 text-xs md:text-sm mt-2">
             Manage your Media Ministry team members
           </p>
+          {isViewer && (
+            <p className="text-amber-600 text-xs mt-2 font-medium">
+              🔒 You have view-only access. Contact an Admin for editing privileges.
+            </p>
+          )}
         </div>
 
-        {/* Add Member Button */}
-        <div className="flex justify-center mb-8">
-          <button
-            onClick={() => {
-              resetForm();
-              setShowForm(true);
-            }}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-black font-medium text-sm hover:bg-blue-700 transition-colors"
-          >
-            <span className="text-lg leading-none">+</span>
-            Add Member
-          </button>
-        </div>
+        {/* 🔒 Add Member Button — hidden for Viewers */}
+        {isEditor && (
+          <div className="flex justify-center mb-8">
+            <button
+              onClick={() => { resetForm(); setShowForm(true); }}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 font-medium text-sm hover:bg-blue-700 transition-colors"
+            >
+              <span className="text-lg leading-none">+</span>
+              Add Member
+            </button>
+          </div>
+        )}
 
         {/* Stats Bar */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5 mb-8">
@@ -231,8 +263,8 @@ export default function MediaPersonnel() {
           </div>
         </div>
 
-        {/* Form */}
-        {showForm && (
+        {/* Form — only for editors */}
+        {showForm && isEditor && (
           <div className="bg-white/80 backdrop-blur border border-slate-200 rounded-xl mb-8 overflow-hidden">
             <div className="bg-slate-900 px-6 py-4">
               <h2 className="text-lg font-bold text-white">
@@ -288,9 +320,7 @@ export default function MediaPersonnel() {
                   >
                     <option value="">Select a role...</option>
                     {roles.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
+                      <option key={r} value={r}>{r}</option>
                     ))}
                   </select>
                 </div>
@@ -334,16 +364,13 @@ export default function MediaPersonnel() {
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  className="px-6 py-2.5 rounded-lg bg-blue-600 text-black font-medium text-sm hover:bg-blue-700 transition-colors"
+                  className="px-6 py-2.5 rounded-lg bg-blue-600 font-medium text-sm hover:bg-blue-700 transition-colors"
                 >
                   Save Member
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    resetForm();
-                  }}
+                  onClick={() => { setShowForm(false); resetForm(); }}
                   className="px-6 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-700 font-medium text-sm hover:bg-slate-100 transition-colors"
                 >
                   Cancel
@@ -360,24 +387,22 @@ export default function MediaPersonnel() {
             <p className="text-slate-600 font-medium text-sm">Loading members...</p>
           </div>
         ) : members.length === 0 ? (
-          /* Empty State */
           <div className="bg-white/80 backdrop-blur border border-slate-200 rounded-xl p-12 text-center">
-            <div className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-4 text-3xl">
-              👥
-            </div>
+            <div className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-4 text-3xl">👥</div>
             <h2 className="text-lg font-bold text-slate-900 mb-2">No team members yet</h2>
             <p className="text-slate-500 text-sm mb-6 max-w-sm mx-auto">
               Get started by adding your first Media Ministry team member to the roster.
             </p>
-            <button
-              onClick={() => setShowForm(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-black px-6 py-2.5 rounded-xl font-medium text-sm transition-colors"
-            >
-              Add First Member
-            </button>
+            {isEditor && (
+              <button
+                onClick={() => setShowForm(true)}
+                className="bg-blue-600 hover:bg-blue-700 px-6 py-2.5 rounded-xl font-medium text-sm transition-colors"
+              >
+                Add First Member
+              </button>
+            )}
           </div>
         ) : (
-          /* Members Grid */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
             {members.map((member) => (
               <div
@@ -397,11 +422,7 @@ export default function MediaPersonnel() {
                       }}
                     />
                   ) : null}
-                  <div
-                    className={`w-14 h-14 rounded-xl items-center justify-center text-lg font-bold text-white bg-slate-700 flex-shrink-0 ${
-                      member.photo_url ? "hidden" : "flex"
-                    }`}
-                  >
+                  <div className={`w-14 h-14 rounded-xl items-center justify-center text-lg font-bold text-white bg-slate-700 flex-shrink-0 ${member.photo_url ? "hidden" : "flex"}`}>
                     {getInitials(member.name)}
                   </div>
                   <div className="min-w-0">
@@ -426,7 +447,6 @@ export default function MediaPersonnel() {
                       <span className="text-xs">{member.age} years old</span>
                     </div>
                   )}
-
                   {member.birthday && (
                     <div className="flex items-center gap-2.5 text-sm text-slate-600">
                       <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-500">
@@ -435,15 +455,10 @@ export default function MediaPersonnel() {
                         </svg>
                       </div>
                       <span className="text-xs">
-                        {new Date(member.birthday).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
+                        {new Date(member.birthday).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                       </span>
                     </div>
                   )}
-
                   {member.phone && (
                     <div className="flex items-center gap-2.5 text-sm text-slate-600">
                       <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-500">
@@ -451,12 +466,9 @@ export default function MediaPersonnel() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                         </svg>
                       </div>
-                      <a href={`tel:${member.phone}`} className="text-xs hover:text-blue-600 transition-colors">
-                        {member.phone}
-                      </a>
+                      <a href={`tel:${member.phone}`} className="text-xs hover:text-blue-600 transition-colors">{member.phone}</a>
                     </div>
                   )}
-
                   {member.email && (
                     <div className="flex items-center gap-2.5 text-sm text-slate-600">
                       <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-500">
@@ -464,34 +476,41 @@ export default function MediaPersonnel() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
                       </div>
-                      <a href={`mailto:${member.email}`} className="text-xs hover:text-blue-600 transition-colors truncate">
-                        {member.email}
-                      </a>
+                      <a href={`mailto:${member.email}`} className="text-xs hover:text-blue-600 transition-colors truncate">{member.email}</a>
                     </div>
                   )}
                 </div>
 
-                {/* Actions */}
-                <div className="flex gap-2 pt-3 border-t border-slate-100">
-                  <button
-                    onClick={() => startEdit(member)}
-                    className="flex-1 flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg font-medium text-xs transition-colors"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => deleteMember(member.id)}
-                    className="flex-1 flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded-lg font-medium text-xs transition-colors"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Delete
-                  </button>
-                </div>
+                {/* 🔒 Actions — hidden for Viewers */}
+                {isEditor ? (
+                  <div className="flex gap-2 pt-3 border-t border-slate-100">
+                    <button
+                      onClick={() => startEdit(member)}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg font-medium text-xs transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => deleteMember(member.id)}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded-lg font-medium text-xs transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Delete
+                    </button>
+                  </div>
+                ) : (
+                  <div className="pt-3 border-t border-slate-100">
+                    <div className="flex items-center justify-center gap-1.5 py-1.5 text-slate-400 text-xs">
+                      <FaLock className="text-[9px]" />
+                      View only
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
