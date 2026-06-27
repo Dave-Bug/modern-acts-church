@@ -7,7 +7,8 @@ import {
 import { 
   FaHome, FaChartBar, FaChartLine, FaFilter, FaSpinner, FaUsers, FaCheckCircle, 
   FaStar, FaUserClock, FaCalendarAlt, FaChevronDown, FaChartPie, FaArrowUp, FaArrowDown,
-  FaTimes, FaListUl, FaSearch, FaSortAmountDown, FaEye, FaDownload
+  FaTimes, FaListUl, FaSearch, FaSortAmountDown, FaEye, FaDownload, FaTrophy,
+  FaBullseye, FaExclamationTriangle, FaMedal, FaPercentage, FaFlagCheckered
 } from "react-icons/fa";
 import { supabase } from "../../../Services/supabase";
 
@@ -88,10 +89,134 @@ const SummaryCard = ({ icon: Icon, label, value, subtext, color }) => (
   </div>
 );
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// TRIBE GOAL CARD — Shows progress toward monthly target
+// ═══════════════════════════════════════════════════════════════════════════════
+const TribeGoalCard = ({ tribe, current, target, colorIndex }) => {
+  const percentage = target > 0 ? Math.round((current / target) * 100) : 0;
+  const isMet = current >= target;
+  const color = CHART_COLORS.palette[colorIndex % CHART_COLORS.palette.length];
+  
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-all">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${color}15` }}>
+            <FaUsers size={12} style={{ color }} />
+          </div>
+          <span className="text-sm font-bold text-slate-800">{tribe}</span>
+        </div>
+        {isMet ? (
+          <div className="flex items-center gap-1 bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full">
+            <FaTrophy size={10} />
+            <span className="text-[10px] font-bold">Met</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1 bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full">
+            <FaExclamationTriangle size={10} />
+            <span className="text-[10px] font-bold">{percentage}%</span>
+          </div>
+        )}
+      </div>
+      
+      <div className="flex items-end justify-between mb-1.5">
+        <div>
+          <span className="text-2xl font-black text-slate-800">{current}</span>
+          <span className="text-xs text-slate-400 font-medium ml-1">/ {target}</span>
+        </div>
+        <span className={`text-xs font-bold ${isMet ? 'text-emerald-600' : 'text-amber-600'}`}>
+          {isMet ? 'Goal Reached!' : `${target - current} to go`}
+        </span>
+      </div>
+      
+      {/* Progress Bar */}
+      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+        <div 
+          className="h-full rounded-full transition-all duration-500 ease-out"
+          style={{ 
+            width: `${Math.min(percentage, 100)}%`,
+            backgroundColor: isMet ? '#10b981' : color
+          }}
+        />
+      </div>
+      
+      <p className="text-[10px] text-slate-400 mt-1.5 font-medium">
+        {isMet 
+          ? `Exceeded by ${current - target} attendees` 
+          : `Needs ${target - current} more to reach goal`
+        }
+      </p>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TRIBE GOAL LEADERBOARD — Ranks tribes by goal achievement
+// ═══════════════════════════════════════════════════════════════════════════════
+const TribeGoalLeaderboard = ({ tribeGoals }) => {
+  const sorted = [...tribeGoals].sort((a, b) => b.percentage - a.percentage);
+  
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="p-2 bg-amber-50 rounded-lg">
+          <FaMedal className="text-amber-500" size={18} />
+        </div>
+        <div>
+          <h2 className="text-base font-bold text-slate-800">Tribe Goal Leaderboard</h2>
+          <p className="text-xs text-slate-400 font-medium">Ranked by goal achievement %</p>
+        </div>
+      </div>
+      
+      <div className="space-y-3">
+        {sorted.map((tribe, index) => {
+          const isTop3 = index < 3;
+          const medals = ['🥇', '🥈', '🥉'];
+          
+          return (
+            <div key={tribe.tribe} className={`flex items-center gap-3 p-2.5 rounded-xl transition-all ${
+              isTop3 ? 'bg-gradient-to-r from-amber-50/50 to-white border border-amber-100' : 'hover:bg-slate-50'
+            }`}>
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-black ${
+                isTop3 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
+              }`}>
+                {isTop3 ? medals[index] : index + 1}
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-bold text-slate-800">{tribe.tribe}</span>
+                  <span className={`text-xs font-bold ${tribe.isMet ? 'text-emerald-600' : 'text-slate-500'}`}>
+                    {tribe.percentage}%
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ 
+                      width: `${Math.min(tribe.percentage, 100)}%`,
+                      backgroundColor: tribe.isMet ? '#10b981' : CHART_COLORS.palette[index % CHART_COLORS.palette.length]
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span className="text-[10px] text-slate-400 font-medium">{tribe.current} attended</span>
+                  <span className="text-[10px] text-slate-400 font-medium">Goal: {tribe.target}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 export default function UsherAttendanceDashboard() {
   const [loading, setLoading] = useState(true);
   const [rawAttendance, setRawAttendance] = useState([]);
   const [rawMembers, setRawMembers] = useState([]);
+  const [tribeGoals, setTribeGoals] = useState([]);
 
   const [viewType, setViewType] = useState("All"); 
   const [selectedTribe, setSelectedTribe] = useState("All");
@@ -107,9 +232,16 @@ export default function UsherAttendanceDashboard() {
   // ═══════════════════════════════════════════════════════════════════════════════
   const [showDrillDown, setShowDrillDown] = useState(false);
   const [drillDownMonth, setDrillDownMonth] = useState(null);
-  const [drillDownCategory, setDrillDownCategory] = useState(null); // e.g. "Present", "Absent", or a tribe name
+  const [drillDownCategory, setDrillDownCategory] = useState(null);
   const [drillDownSearch, setDrillDownSearch] = useState("");
-  const [drillDownStatusFilter, setDrillDownStatusFilter] = useState("All"); // "All" | "Present" | "Absent"
+  const [drillDownStatusFilter, setDrillDownStatusFilter] = useState("All");
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // GOAL MANAGEMENT STATE
+  // ═══════════════════════════════════════════════════════════════════════════════
+  const [showGoalManager, setShowGoalManager] = useState(false);
+  const [goalFormData, setGoalFormData] = useState({ tribe: "", target: 50, month: new Date().getMonth() + 1, year: new Date().getFullYear() });
+  const [savingGoal, setSavingGoal] = useState(false);
 
   // Fetch data
   useEffect(() => {
@@ -154,6 +286,19 @@ export default function UsherAttendanceDashboard() {
 
         setTribesList(uniqueTribes);
         setServicesList(uniqueServices);
+
+        // Fetch tribe goals
+        const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1;
+        const { data: goals, error: goalsErr } = await supabase
+          .from("tribe_goals")
+          .select("*")
+          .eq("year", currentYear)
+          .eq("month", currentMonth);
+
+        if (goalsErr) throw goalsErr;
+        setTribeGoals(goals || []);
+
       } catch (err) {
         console.error("Error loading dashboard metrics:", err.message);
       } finally {
@@ -162,6 +307,81 @@ export default function UsherAttendanceDashboard() {
     }
     fetchDashboardData();
   }, []);
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // COMPUTE TRIBE GOAL PROGRESS
+  // ═══════════════════════════════════════════════════════════════════════════════
+  const tribeGoalProgress = useMemo(() => {
+    const currentMonth = new Date().getMonth();
+    
+    const tribeAttendance = {};
+    rawAttendance.forEach(record => {
+      if (!record.date || record.status !== "Present") return;
+      const dateObj = new Date(record.date);
+      if (isNaN(dateObj.getTime()) || dateObj.getMonth() !== currentMonth) return;
+      
+      const tribe = record.tribe || "N/A";
+      tribeAttendance[tribe] = (tribeAttendance[tribe] || 0) + 1;
+    });
+
+    return tribesList.map((tribe, index) => {
+      const goal = tribeGoals.find(g => g.tribe_name === tribe);
+      const target = goal?.target_attendance || 0;
+      const current = tribeAttendance[tribe] || 0;
+      const percentage = target > 0 ? Math.round((current / target) * 100) : 0;
+      
+      return {
+        tribe,
+        current,
+        target,
+        percentage,
+        isMet: current >= target,
+        colorIndex: index
+      };
+    }).filter(t => t.target > 0); // Only show tribes with goals set
+  }, [rawAttendance, tribeGoals, tribesList]);
+
+  const metGoalsCount = tribeGoalProgress.filter(t => t.isMet).length;
+  const totalGoalsCount = tribeGoalProgress.length;
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SAVE/UPDATE TRIBE GOAL
+  // ═══════════════════════════════════════════════════════════════════════════════
+  const handleSaveGoal = async () => {
+    if (!goalFormData.tribe || goalFormData.target < 1) return;
+    
+    try {
+      setSavingGoal(true);
+      const { error } = await supabase
+        .from("tribe_goals")
+        .upsert({
+          tribe_name: goalFormData.tribe,
+          year: goalFormData.year,
+          month: goalFormData.month,
+          target_attendance: parseInt(goalFormData.target),
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'tribe_name,year,month' });
+
+      if (error) throw error;
+
+      // Refresh goals
+      const { data: goals } = await supabase
+        .from("tribe_goals")
+        .select("*")
+        .eq("year", goalFormData.year)
+        .eq("month", goalFormData.month);
+      
+      setTribeGoals(goals || []);
+      setShowGoalManager(false);
+      setGoalFormData({ tribe: "", target: 50, month: new Date().getMonth() + 1, year: new Date().getFullYear() });
+      
+    } catch (err) {
+      console.error("Error saving goal:", err);
+      alert("Failed to save goal: " + err.message);
+    } finally {
+      setSavingGoal(false);
+    }
+  };
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // CHART DATA GENERATION
@@ -389,15 +609,24 @@ export default function UsherAttendanceDashboard() {
               </p>
             </div>
           </div>
-          <div className="flex items-center bg-slate-100 rounded-lg p-1">
-            <button onClick={() => setActiveChart("bar")}
-              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${activeChart === "bar" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>
-              <FaChartBar className="inline mr-1" size={12} /> Bar
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowGoalManager(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-xl text-xs font-bold hover:bg-amber-100 transition-colors"
+            >
+              <FaBullseye size={14} />
+              Set Goals
             </button>
-            <button onClick={() => setActiveChart("line")}
-              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${activeChart === "line" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>
-              <FaChartLine className="inline mr-1" size={12} /> Line
-            </button>
+            <div className="flex items-center bg-slate-100 rounded-lg p-1">
+              <button onClick={() => setActiveChart("bar")}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${activeChart === "bar" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>
+                <FaChartBar className="inline mr-1" size={12} /> Bar
+              </button>
+              <button onClick={() => setActiveChart("line")}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${activeChart === "line" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>
+                <FaChartLine className="inline mr-1" size={12} /> Line
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -405,41 +634,100 @@ export default function UsherAttendanceDashboard() {
       <div className="max-w-[1400px] mx-auto  px-4 sm:px-6 lg:px-8 pt-6 flex flex-col gap-6">
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 md:gap-3">
-  <SummaryCard icon={FaUsers} label="Total Records" value={totalRecords} color={{ bg: "bg-blue-50", text: "text-blue-600" }} />
-  <SummaryCard icon={FaCheckCircle} label="Present" value={totalPresent}  color={{ bg: "bg-emerald-50", text: "text-emerald-600" }} />
-  <SummaryCard icon={FaStar} label="1st Timers" value={firstTimerCount} color={{ bg: "bg-amber-50", text: "text-amber-500" }} />
-  <SummaryCard icon={FaUserClock} label="2nd Timers" value={secondTimerCount} color={{ bg: "bg-purple-50", text: "text-purple-600" }} />
-  
-  {/* Compact Attendance Rate Card */}
-  <div className="col-span-2 lg:col-span-1 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-3 shadow-lg text-white flex items-center gap-3">
-    <div className="flex-1 min-w-0">
-      <p className="text-blue-100 text-[10px] font-bold uppercase tracking-wider leading-none">Attendance Rate</p>
-      <p className="text-2xl font-black leading-none mt-1">{attendanceRate}%</p>
-    </div>
-    <div className="w-10 h-10 relative flex-shrink-0">
-      <svg className="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
-        <path
-          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-          fill="none"
-          stroke="rgba(255,255,255,0.2)"
-          strokeWidth="4"
-        />
-        <path
-          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-          fill="none"
-          stroke="white"
-          strokeWidth="4"
-          strokeDasharray={`${attendanceRate}, 100`}
-          strokeLinecap="round"
-        />
-      </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold">
-        {attendanceRate}
-      </span>
-    </div>
-  </div>
-</div>
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-2 md:gap-3">
+          <SummaryCard icon={FaUsers} label="Total Records" value={totalRecords} color={{ bg: "bg-blue-50", text: "text-blue-600" }} />
+          <SummaryCard icon={FaCheckCircle} label="Present" value={totalPresent}  color={{ bg: "bg-emerald-50", text: "text-emerald-600" }} />
+          <SummaryCard icon={FaStar} label="1st Timers" value={firstTimerCount} color={{ bg: "bg-amber-50", text: "text-amber-500" }} />
+          <SummaryCard icon={FaUserClock} label="2nd Timers" value={secondTimerCount} color={{ bg: "bg-purple-50", text: "text-purple-600" }} />
+          
+          {/* Tribe Goals Met Card */}
+          <div className={`col-span-2 lg:col-span-1 rounded-xl p-3 shadow-sm flex items-center gap-3 ${
+            metGoalsCount === totalGoalsCount && totalGoalsCount > 0 
+              ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white' 
+              : 'bg-gradient-to-br from-amber-500 to-orange-500 text-white'
+          }`}>
+            <div className="w-10 h-10 relative flex-shrink-0 flex items-center justify-center bg-white/20 rounded-lg">
+              <FaFlagCheckered size={18} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white/80 text-[10px] font-bold uppercase tracking-wider leading-none">Goals Met</p>
+              <p className="text-2xl font-black leading-none mt-1">{metGoalsCount}/{totalGoalsCount}</p>
+              <p className="text-[10px] text-white/70 mt-0.5 font-medium">
+                {metGoalsCount === totalGoalsCount && totalGoalsCount > 0 ? 'All tribes on target!' : `${totalGoalsCount - metGoalsCount} tribes behind`}
+              </p>
+            </div>
+          </div>
+
+          {/* Compact Attendance Rate Card */}
+          <div className="col-span-2 lg:col-span-1 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-3 shadow-lg text-white flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-blue-100 text-[10px] font-bold uppercase tracking-wider leading-none">Attendance Rate</p>
+              <p className="text-2xl font-black leading-none mt-1">{attendanceRate}%</p>
+            </div>
+            <div className="w-10 h-10 relative flex-shrink-0">
+              <svg className="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
+                <path
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.2)"
+                  strokeWidth="4"
+                />
+                <path
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="4"
+                  strokeDasharray={`${attendanceRate}, 100`}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold">
+                {attendanceRate}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* ═══════════════════════════════════════════════════════════════════════════════
+            TRIBE GOALS SECTION — Shows each tribe's progress toward their monthly goal
+            ═══════════════════════════════════════════════════════════════════════════════ */}
+        {tribeGoalProgress.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-emerald-50 rounded-lg">
+                  <FaBullseye className="text-emerald-600" size={18} />
+                </div>
+                <div>
+                  <h2 className="text-base md:text-lg font-bold text-slate-800">Tribe Monthly Goals</h2>
+                  <p className="text-xs text-slate-400 font-medium">Current month attendance targets</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
+                  {metGoalsCount} Met
+                </span>
+                {totalGoalsCount - metGoalsCount > 0 && (
+                  <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">
+                    {totalGoalsCount - metGoalsCount} Pending
+                  </span>
+                )}
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {tribeGoalProgress.map((tribe) => (
+                <TribeGoalCard 
+                  key={tribe.tribe}
+                  tribe={tribe.tribe}
+                  current={tribe.current}
+                  target={tribe.target}
+                  colorIndex={tribe.colorIndex}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Filter Bar */}
         <div className="bg-white border border-slate-200 rounded-2xl p-4 md:p-5 shadow-sm">
@@ -597,61 +885,69 @@ export default function UsherAttendanceDashboard() {
               </div>
             </div>
 
-            {/* Secondary Chart — Area Chart */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-purple-50 rounded-lg"><FaChartLine className="text-purple-500" size={18} /></div>
-                  <div>
-                    <h2 className="text-base md:text-lg font-bold text-slate-800">Trends Over Time</h2>
-                    <p className="text-xs text-slate-400 font-medium">Click any point to drill down</p>
+            {/* Secondary Chart + Leaderboard */}
+            <div className="flex flex-col gap-5">
+              {/* Area Chart */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-purple-50 rounded-lg"><FaChartLine className="text-purple-500" size={18} /></div>
+                    <div>
+                      <h2 className="text-base md:text-lg font-bold text-slate-800">Trends Over Time</h2>
+                      <p className="text-xs text-slate-400 font-medium">Click any point to drill down</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="w-full h-[300px] md:h-[380px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 20, right: 10, left: -10, bottom: 5 }}
-                    onClick={(state) => {
-                      if (state && state.activeLabel) {
-                        handleOpenDrillDown(state.activeLabel);
-                      }
-                    }}>
-                    <defs>
-                      <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={CHART_COLORS.present} stopOpacity={0.15}/>
-                        <stop offset="95%" stopColor={CHART_COLORS.present} stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorAbsent" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={CHART_COLORS.absent} stopOpacity={0.15}/>
-                        <stop offset="95%" stopColor={CHART_COLORS.absent} stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="month" stroke="#94a3b8" tickLine={false} axisLine={false} 
-                      tick={{ fill: '#64748b', fontWeight: 600, fontSize: 12 }} dy={10} />
-                    <YAxis stroke="#94a3b8" tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                    <Tooltip content={<CustomTooltip viewType={viewType} onDrillDown={(month) => handleOpenDrillDown(month)} />} />
+                <div className="w-full h-[300px] md:h-[380px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData} margin={{ top: 20, right: 10, left: -10, bottom: 5 }}
+                      onClick={(state) => {
+                        if (state && state.activeLabel) {
+                          handleOpenDrillDown(state.activeLabel);
+                        }
+                      }}>
+                      <defs>
+                        <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={CHART_COLORS.present} stopOpacity={0.15}/>
+                          <stop offset="95%" stopColor={CHART_COLORS.present} stopOpacity={0}/>
+                        </linearGradient>
+                        <linearGradient id="colorAbsent" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={CHART_COLORS.absent} stopOpacity={0.15}/>
+                          <stop offset="95%" stopColor={CHART_COLORS.absent} stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="month" stroke="#94a3b8" tickLine={false} axisLine={false} 
+                        tick={{ fill: '#64748b', fontWeight: 600, fontSize: 12 }} dy={10} />
+                      <YAxis stroke="#94a3b8" tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                      <Tooltip content={<CustomTooltip viewType={viewType} onDrillDown={(month) => handleOpenDrillDown(month)} />} />
 
-                    {viewType === "All" ? (
-                      <>
-                        <Area type="monotone" dataKey="Present" stroke={CHART_COLORS.present} strokeWidth={3}
-                          fill="url(#colorPresent)" dot={{ r: 4, fill: CHART_COLORS.present, strokeWidth: 2, stroke: '#fff' }}
-                          activeDot={{ r: 6, strokeWidth: 0, onClick: (e) => handleOpenDrillDown(e.payload.month, "Present") }} />
-                        <Area type="monotone" dataKey="Absent" stroke={CHART_COLORS.absent} strokeWidth={2} strokeDasharray="6 4"
-                          fill="url(#colorAbsent)" dot={{ r: 3, fill: CHART_COLORS.absent, strokeWidth: 2, stroke: '#fff' }}
-                          activeDot={{ r: 6, strokeWidth: 0, onClick: (e) => handleOpenDrillDown(e.payload.month, "Absent") }} />
-                      </>
-                    ) : (
-                      keys.slice(0, 3).map((key, index) => (
-                        <Area key={key} type="monotone" dataKey={key} 
-                          stroke={CHART_COLORS.palette[index % CHART_COLORS.palette.length]} strokeWidth={2}
-                          fill={`url(#color${index})`} dot={{ r: 4, fill: CHART_COLORS.palette[index % CHART_COLORS.palette.length], strokeWidth: 2, stroke: '#fff' }}
-                          activeDot={{ r: 6, strokeWidth: 0, onClick: (e) => handleOpenDrillDown(e.payload.month, key) }} />
-                      ))
-                    )}
-                  </AreaChart>
-                </ResponsiveContainer>
+                      {viewType === "All" ? (
+                        <>
+                          <Area type="monotone" dataKey="Present" stroke={CHART_COLORS.present} strokeWidth={3}
+                            fill="url(#colorPresent)" dot={{ r: 4, fill: CHART_COLORS.present, strokeWidth: 2, stroke: '#fff' }}
+                            activeDot={{ r: 6, strokeWidth: 0, onClick: (e) => handleOpenDrillDown(e.payload.month, "Present") }} />
+                          <Area type="monotone" dataKey="Absent" stroke={CHART_COLORS.absent} strokeWidth={2} strokeDasharray="6 4"
+                            fill="url(#colorAbsent)" dot={{ r: 3, fill: CHART_COLORS.absent, strokeWidth: 2, stroke: '#fff' }}
+                            activeDot={{ r: 6, strokeWidth: 0, onClick: (e) => handleOpenDrillDown(e.payload.month, "Absent") }} />
+                        </>
+                      ) : (
+                        keys.slice(0, 3).map((key, index) => (
+                          <Area key={key} type="monotone" dataKey={key} 
+                            stroke={CHART_COLORS.palette[index % CHART_COLORS.palette.length]} strokeWidth={2}
+                            fill={`url(#color${index})`} dot={{ r: 4, fill: CHART_COLORS.palette[index % CHART_COLORS.palette.length], strokeWidth: 2, stroke: '#fff' }}
+                            activeDot={{ r: 6, strokeWidth: 0, onClick: (e) => handleOpenDrillDown(e.payload.month, key) }} />
+                        ))
+                      )}
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
+
+              {/* Tribe Goal Leaderboard */}
+              {tribeGoalProgress.length > 0 && (
+                <TribeGoalLeaderboard tribeGoals={tribeGoalProgress} />
+              )}
             </div>
 
           </div>
@@ -793,6 +1089,125 @@ export default function UsherAttendanceDashboard() {
                   <FaDownload size={11} /> Export CSV
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════════════════
+          GOAL MANAGER MODAL — Set/Edit tribe attendance goals
+          ═══════════════════════════════════════════════════════════════════════════════ */}
+      {showGoalManager && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowGoalManager(false); }}>
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-white">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <FaBullseye className="text-amber-600" size={16} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-800">Set Tribe Goals</h2>
+                  <p className="text-xs text-slate-400 font-medium">Define monthly attendance targets</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setShowGoalManager(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors">
+                <FaTimes size={14} />
+              </button>
+            </div>
+
+            {/* Goal Form */}
+            <div className="p-6 space-y-4 overflow-y-auto">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tribe</label>
+                <select 
+                  value={goalFormData.tribe}
+                  onChange={(e) => setGoalFormData({...goalFormData, tribe: e.target.value})}
+                  className="w-full bg-slate-50 border border-slate-200 text-sm font-semibold rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400"
+                >
+                  <option value="">Select a tribe...</option>
+                  {tribesList.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Month</label>
+                  <select 
+                    value={goalFormData.month}
+                    onChange={(e) => setGoalFormData({...goalFormData, month: parseInt(e.target.value)})}
+                    className="w-full bg-slate-50 border border-slate-200 text-sm font-semibold rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400"
+                  >
+                    {MONTHS.map((m, i) => (
+                      <option key={m} value={i + 1}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Year</label>
+                  <input 
+                    type="number"
+                    value={goalFormData.year}
+                    onChange={(e) => setGoalFormData({...goalFormData, year: parseInt(e.target.value)})}
+                    className="w-full bg-slate-50 border border-slate-200 text-sm font-semibold rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Target Attendance <span className="text-slate-400 font-normal">(people)</span>
+                </label>
+                <input 
+                  type="number"
+                  min="1"
+                  value={goalFormData.target}
+                  onChange={(e) => setGoalFormData({...goalFormData, target: parseInt(e.target.value) || 0})}
+                  className="w-full bg-slate-50 border border-slate-200 text-sm font-semibold rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400"
+                  placeholder="e.g., 50"
+                />
+              </div>
+
+              {/* Current Goals Preview */}
+              {tribeGoals.length > 0 && (
+                <div className="border-t border-slate-100 pt-4">
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Current Goals</h3>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {tribeGoals.map((goal) => (
+                      <div key={goal.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <FaBullseye size={10} className="text-amber-500" />
+                          <span className="text-sm font-bold text-slate-700">{goal.tribe_name}</span>
+                        </div>
+                        <span className="text-xs font-bold text-slate-500">{MONTHS[goal.month - 1]} {goal.year}: <span className="text-amber-600">{goal.target_attendance}</span></span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex gap-2">
+              <button 
+                onClick={() => setShowGoalManager(false)}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSaveGoal}
+                disabled={!goalFormData.tribe || savingGoal}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              >
+                {savingGoal ? <FaSpinner className="animate-spin" size={14} /> : <FaBullseye size={14} />}
+                {savingGoal ? 'Saving...' : 'Set Goal'}
+              </button>
             </div>
           </div>
         </div>

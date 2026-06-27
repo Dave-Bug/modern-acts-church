@@ -48,6 +48,27 @@ const dedupeByKey = (items, keyFn) => {
 
 const sumAmounts = (items) => items.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
 
+/* ─── NEW: Infer bind date from duplicate transactions ─── */
+const getBindDate = (primary, secondary, allTithes) => {
+  const primaryTithes = allTithes.filter(t => String(t.member_id) === String(primary.id));
+  const secondaryTithes = allTithes.filter(t => String(t.member_id) === String(secondary.id));
+
+  const primaryMap = new Map(primaryTithes.map(t => [t.date, t.amount]));
+  const secondaryMap = new Map(secondaryTithes.map(t => [t.date, t.amount]));
+
+  let earliestBindDate = null;
+
+  for (const [date, pAmount] of primaryMap) {
+    if (secondaryMap.has(date) && secondaryMap.get(date) === pAmount) {
+      if (!earliestBindDate || date < earliestBindDate) {
+        earliestBindDate = date;
+      }
+    }
+  }
+
+  return earliestBindDate;
+};
+
 export default function FinanceTithes() {
   const [activeTab, setActiveTab] = useState("today");
   const [tithes, setTithes] = useState([]);
@@ -90,7 +111,7 @@ export default function FinanceTithes() {
           .gte("date", `${selectedMonth}-01`).lte("date", `${selectedMonth}-${getDaysInMonth(selectedMonth)}`),
         supabase.from("church_finance").select("*").eq("category", "Tithes")
           .gte("date", `${currentYear}-01-01`).lte("date", `${currentYear}-12-31`),
-        supabase.from("usher_members").select("id, first_name, last_name, gross, is_tither, bindedto")
+        supabase.from("usher_members").select("id, first_name, last_name, gross, is_tither, bindedto, binded_at")
           .order("first_name", { ascending: true })
       ]);
 
@@ -104,7 +125,6 @@ export default function FinanceTithes() {
     }
   }
 
-  /* ─── NEW: Calculate status based on total vs gross ─── */
   const calculateStatus = (total, gross) => {
     const g = parseFloat(gross || 0);
     const t = parseFloat(total || 0);
@@ -113,7 +133,6 @@ export default function FinanceTithes() {
     return 'Short';
   };
 
-  /* ─── NEW: Get member's monthly status/gross from church_finance ─── */
   const getMemberMonthlyStatus = (memberId, yearMonth) => {
     const memberMonthTithes = tithes.filter(t => 
       String(t.member_id) === String(memberId) && 
@@ -135,7 +154,6 @@ export default function FinanceTithes() {
     };
   };
 
-  /* ─── NEW: Get member's annual status data from church_finance ─── */
   const getMemberAnnualStatus = (memberId, year) => {
     const memberYearTithes = allYearTithes.filter(t => 
       String(t.member_id) === String(memberId) && 
@@ -180,11 +198,22 @@ export default function FinanceTithes() {
     try {
       const member = members.find(m => m.id === memberId);
       if (member.bindedto) {
-        await supabase.from("usher_members").update({ bindedto: null }).eq("id", member.bindedto);
+        await supabase.from("usher_members").update({ bindedto: null, binded_at: null }).eq("id", member.bindedto);
       }
-      await supabase.from("usher_members").update({ bindedto: targetBindedId || null }).eq("id", memberId);
+
+      const updates = { bindedto: targetBindedId || null };
       if (targetBindedId) {
-        await supabase.from("usher_members").update({ bindedto: memberId }).eq("id", targetBindedId);
+        updates.binded_at = new Date().toISOString().split('T')[0];
+      } else {
+        updates.binded_at = null;
+      }
+
+      await supabase.from("usher_members").update(updates).eq("id", memberId);
+      if (targetBindedId) {
+        await supabase.from("usher_members").update({ 
+          bindedto: memberId, 
+          binded_at: updates.binded_at 
+        }).eq("id", targetBindedId);
       }
       await fetchTithesData(true);
     } catch (err) {
@@ -255,7 +284,6 @@ export default function FinanceTithes() {
     return parseInt(m.id) < parseInt(partner.id);
   });
 
-  /* ─── NEW: Build payload with status and gross ─── */
   const buildTithePayload = (amount, date, memberId, description = "None") => {
     const member = members.find(m => String(m.id) === String(memberId));
     let gross = 0;
@@ -441,12 +469,28 @@ export default function FinanceTithes() {
         const secondary = parseInt(mid) < parseInt(partner.id) ? partner : m;
         const primaryGross = parseFloat(primary.gross || 0);
 
-        const primaryTithes = sourceTithes.filter(t => String(t.member_id) === String(primary.id));
+        const allPrimaryTithes = sourceTithes.filter(t => String(t.member_id) === String(primary.id));
+        const allSecondaryTithes = sourceTithes.filter(t => String(t.member_id) === String(secondary.id));
+
+        const storedBindDate = primary.binded_at || partner.binded_at || null;
+        const inferredBindDate = getBindDate(primary, secondary, sourceTithes);
+        const bindDate = storedBindDate || inferredBindDate;
+
+        let combinedTithes = [];
+
+        if (bindDate) {
+          const preBindPrimary = allPrimaryTithes.filter(t => t.date < bindDate);
+          const preBindSecondary = allSecondaryTithes.filter(t => t.date < bindDate);
+          const postBindPrimary = allPrimaryTithes.filter(t => t.date >= bindDate);
+          combinedTithes = [...preBindPrimary, ...preBindSecondary, ...postBindPrimary];
+        } else {
+          combinedTithes = [...allPrimaryTithes, ...allSecondaryTithes];
+        }
 
         if (isMonthly) {
           const weeklyData = weeks.map(week => {
             let weekAmount = 0, weekRecords = [];
-            primaryTithes.forEach(t => {
+            combinedTithes.forEach(t => {
               const day = parseInt(t.date.split('-')[2]);
               if (day >= week.start && day <= week.end) {
                 weekAmount += parseFloat(t.amount || 0);
@@ -486,7 +530,7 @@ export default function FinanceTithes() {
 
           const months = MONTH_NAMES.map((_, idx) => {
             const prefix = `${currentYear}-${String(idx + 1).padStart(2, '0')}`;
-            const sum = sumAmounts(primaryTithes.filter(t => t.date.startsWith(prefix)));
+            const sum = sumAmounts(combinedTithes.filter(t => t.date.startsWith(prefix)));
             runningTotal += sum;
 
             const monthRecord = annualStatusData[idx + 1];
@@ -697,7 +741,7 @@ export default function FinanceTithes() {
     wsA.getRow(7).values = ["Member Name", ...MONTH_NAMES, "Annual Total", "Achieved"];
     wsA.getRow(7).eachCell(c => {
       c.font = { name: "Segoe UI", size: 11, bold: true, color: { argb: "FFFFFFFF" } };
-      c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F172A" } };
+      c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E293B" } };
       c.alignment = { horizontal: "center", vertical: "middle" };
     });
 

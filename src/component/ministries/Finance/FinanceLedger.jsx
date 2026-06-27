@@ -1,15 +1,24 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { FaHome, FaPlus, FaWallet, FaArrowDown, FaArrowUp, FaSpinner, FaHistory, FaUser, FaPiggyBank, FaListUl, FaHandHoldingUsd, FaPrayingHands, FaCheckCircle, FaTimes, FaChartBar, FaCalendarAlt } from "react-icons/fa";
+import { FaHome, FaPlus, FaWallet, FaArrowDown, FaArrowUp, FaSpinner, FaHistory, FaPiggyBank, FaHandHoldingUsd, FaPrayingHands, FaCheckCircle, FaChartBar } from "react-icons/fa";
 import { supabase } from "../../../Services/supabase";
 import { useNavigate } from "react-router-dom";
 
+// Helper utilities
 const getCurrentMonthString = () => {
   const today = new Date();
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
 };
 
-const getCurrentYear = () => new Date().getFullYear().toString();
+const formatCurrency = (amount) => {
+  return "₱" + parseFloat(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
 
 export default function Finance() {
   const navigate = useNavigate();
@@ -38,7 +47,6 @@ export default function Finance() {
     fetchFinancialData();
   }, []);
 
-  // Auto-check for existing record when category, date, or transactions change
   useEffect(() => {
     checkExistingQuickAdd();
   }, [quickCategory, quickDate, transactions]);
@@ -89,7 +97,7 @@ export default function Finance() {
 
   const handleQuickAdd = async (e) => {
     e.preventDefault();
-    if (!quickAmount || parseFloat(quickAmount) <= 0) {
+    if (!quickAmount || parseFloat(quickAmount) <= -1) {
       alert("Please enter a valid amount.");
       return;
     }
@@ -107,7 +115,6 @@ export default function Finance() {
       };
 
       if (quickExistingId) {
-        // UPDATE existing record
         const { error } = await supabase
           .from("church_finance")
           .update(payload)
@@ -115,7 +122,6 @@ export default function Finance() {
         if (error) throw error;
         setSuccessMessage(`Updated ${quickCategory} to ${formatCurrency(parseFloat(quickAmount))}`);
       } else {
-        // INSERT new record
         const { error } = await supabase
           .from("church_finance")
           .insert([payload]);
@@ -136,15 +142,18 @@ export default function Finance() {
   const getPartner = (memberId) => {
     if (!memberId) return null;
     const member = members.find(m => String(m.id) === String(memberId));
-    if (!member || !member.bindedto) return null;
-    return members.find(m => String(m.id) === String(member.bindedto)) || null;
-  };
+    if (!member) return null;
+    
+    if (member.bindedto) {
+        return members.find(m => String(m.id) === String(member.bindedto)) || null;
+    }
+    
+    return members.find(m => m.bindedto && String(m.bindedto) === String(memberId)) || null;
+};
 
-  const isSecondaryMember = (memberId) => {
-    if (!memberId) return false;
+  const getMemberName = (memberId) => {
     const member = members.find(m => String(m.id) === String(memberId));
-    if (!member || !member.bindedto) return false;
-    return parseInt(member.id) > parseInt(member.bindedto);
+    return member ? `${member.first_name} ${member.last_name}` : "";
   };
 
   const currentYear = selectedReportMonth.split('-')[0];
@@ -162,58 +171,99 @@ export default function Finance() {
     return (cat === "tithes" || cat === "tithe") && isInPeriod(t.date);
   });
 
-  // ========== UPDATED getTitheSummary ==========
   const getTitheSummary = () => {
-    const processed = new Set();
-    let metCount = 0;
-    let withRecordsCount = 0;
-    let totalAmount = 0;
+  const processed = new Set();
+  let metCount = 0;
+  let withRecordsCount = 0;
+  let totalAmount = 0;
 
-    // Annual goal = gross * 12, Monthly goal = gross * 1
-    const goalMultiplier = reportView === "annual" ? 12 : 1;
+  const goalMultiplier = reportView === "annual" ? 12 : 1;
 
-    activeTithers.forEach(m => {
-      const mid = String(m.id);
-      if (processed.has(mid)) return;
+  activeTithers.forEach(m => {
+    const mid = String(m.id);
+    if (processed.has(mid)) return;
 
-      const partner = getPartner(m.id);
-      const targetGross = parseFloat(m.gross || 0) * goalMultiplier;
+    const partner = getPartner(m.id);
+    const partnerIsActiveTither =
+      partner && activeTithers.some(t => String(t.id) === String(partner.id));
 
-      if (partner) {
-        processed.add(mid);
-        processed.add(String(partner.id));
-        const primary = parseInt(mid) < parseInt(partner.id) ? m : partner;
+    if (partner && partnerIsActiveTither) {
+      if (processed.has(String(partner.id))) return;
 
-        // Sum only PRIMARY member's transactions (matching global metrics logic)
-        // Secondary records are auto-duplicates from handleUpdateTransaction
-        const primaryTx = titheTransactions.filter(t => String(t.member_id) === String(primary.id));
-        const pairTotal = primaryTx.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+      processed.add(mid);
+      processed.add(String(partner.id));
 
-        if (pairTotal > 0) withRecordsCount++;
-        if (targetGross > 0 && pairTotal >= targetGross) metCount++;
-        totalAmount += pairTotal;
-      } else {
-        processed.add(mid);
-        const memberTx = titheTransactions.filter(t => String(t.member_id) === mid);
-        const memberTotal = memberTx.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-        if (memberTotal > 0) withRecordsCount++;
-        if (targetGross > 0 && memberTotal >= targetGross) metCount++;
-        totalAmount += memberTotal;
+      const primary =
+        parseInt(mid) < parseInt(String(partner.id)) ? m : partner;
+      const secondary = primary === m ? partner : m;
+
+      const primaryGross = parseFloat(primary.gross || 0) * goalMultiplier;
+      const secondaryGross = parseFloat(secondary.gross || 0) * goalMultiplier;
+      const combinedGross = primaryGross + secondaryGross;
+
+      const primaryTotal = titheTransactions
+        .filter(t => String(t.member_id) === String(primary.id))
+        .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+
+      const secondaryTotal = titheTransactions
+        .filter(t => String(t.member_id) === String(secondary.id))
+        .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+
+      const pairTotal = primaryTotal + secondaryTotal;
+
+      if (pairTotal > 0) withRecordsCount++;
+
+      // ✅ Mirror FinanceTithes.jsx EXACTLY:
+      // Only check gross for members that actually have one set
+      let isMet = false;
+      if (combinedGross > 0) {
+        const primaryMet = primaryGross > 0
+          ? primaryTotal >= primaryGross
+          : true; // no goal set → don't penalize
+        const secondaryMet = secondaryGross > 0
+          ? secondaryTotal >= secondaryGross
+          : true; // no goal set → don't penalize
+        isMet = primaryMet && secondaryMet;
       }
-    });
 
-    // Include unassigned tithe transactions (member_id: null) in the total
-    const unassignedTx = titheTransactions.filter(t => t.member_id === null);
-    const unassignedTotal = unassignedTx.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-    totalAmount += unassignedTotal;
+      if (isMet) metCount++;
+      totalAmount += pairTotal;
 
-    return { totalActive: activeTithers.length, withRecords: withRecordsCount, metGoal: metCount, totalAmount };
+    } else {
+      processed.add(mid);
+
+      const memberTx = titheTransactions
+        .filter(t => String(t.member_id) === mid);
+      const memberTotal = memberTx
+        .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+
+      if (memberTotal > 0) withRecordsCount++;
+
+      const targetGross = parseFloat(m.gross || 0) * goalMultiplier;
+      if (targetGross > 0 && memberTotal >= targetGross) metCount++;
+
+      totalAmount += memberTotal;
+    }
+  });
+
+  const unassignedTotal = titheTransactions
+    .filter(t => t.member_id === null)
+    .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+  totalAmount += unassignedTotal;
+
+  return {
+    totalActive: activeTithers.length,
+    withRecords: withRecordsCount,
+    metGoal: metCount,
+    totalAmount,
   };
+};
 
   const offeringTransactions = transactions.filter(t => {
     const cat = (t.category || "").toLowerCase();
     return (cat === "offering" || cat === "basket" || cat.includes("offering") || cat.includes("basket")) && isInPeriod(t.date);
   });
+  
   const offeringSummary = {
     recordCount: offeringTransactions.length,
     totalAmount: offeringTransactions.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0)
@@ -225,7 +275,7 @@ export default function Finance() {
     return (cat === "pledge" || cat.includes("pledge")) && isInPeriod(t.date);
   });
 
-  // ========== UPDATED getPledgeSummary ==========
+  // ========== getPledgeSummary ==========
   const getPledgeSummary = () => {
     const processed = new Set();
     let withRecordsCount = 0;
@@ -240,7 +290,6 @@ export default function Finance() {
         processed.add(String(partner.id));
         const primary = parseInt(mid) < parseInt(partner.id) ? m : partner;
 
-        // Sum only primary member's transactions
         const primaryTx = pledgeTransactions.filter(t => String(t.member_id) === String(primary.id));
         const pairTotal = primaryTx.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 
@@ -255,7 +304,6 @@ export default function Finance() {
       }
     });
 
-    // Include unassigned pledge transactions in the total
     const unassignedTx = pledgeTransactions.filter(t => t.member_id === null);
     const unassignedTotal = unassignedTx.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
     totalAmount += unassignedTotal;
@@ -317,40 +365,61 @@ export default function Finance() {
     }
   };
 
-  const metrics = transactions.reduce((acc, item) => {
-    const amt = parseFloat(item.amount || 0);
-    const cat = (item.category || "").trim();
-    const catLower = cat.toLowerCase();
-    if (item.member_id && (catLower === "tithes" || catLower === "tithe" || catLower === "pledge" || catLower.includes("pledge"))) {
-      if (isSecondaryMember(item.member_id)) return acc;
-    }
-    if (item.transaction_type === "Income") {
-      acc.totalIncome += amt;
-      if (catLower === "tithes" || catLower === "tithe") acc.tithes += amt;
-      else if (catLower === "pledge" || catLower.includes("pledge")) acc.pledge += amt;
-      else acc.offering += amt;
-    } else if (item.transaction_type === "Expense") {
-      acc.totalExpenses += amt;
-    }
-    return acc;
-  }, { totalIncome: 0, totalExpenses: 0, tithes: 0, offering: 0, pledge: 0 });
+  const metrics = (() => {
+    const processedIds = new Set();
+    const dedupedTransactions = [];
+
+    transactions.forEach(item => {
+      if (processedIds.has(item.id)) return;
+
+      const catLower = (item.category || "").toLowerCase();
+      const isTitheOrPledge = catLower === "tithes" || catLower === "tithe" || catLower === "pledge" || catLower.includes("pledge");
+
+      if (isTitheOrPledge && item.member_id) {
+        const member = members.find(m => String(m.id) === String(item.member_id));
+        if (member && member.bindedto) {
+          const partner = members.find(m => String(m.id) === String(member.bindedto));
+          if (partner) {
+            const partnerRecord = transactions.find(t => 
+              t.id !== item.id &&
+              String(t.member_id) === String(partner.id) &&
+              t.date === item.date &&
+              t.category === item.category &&
+              parseFloat(t.amount || 0) === parseFloat(item.amount || 0)
+            );
+            if (partnerRecord) {
+              const isPrimary = parseInt(member.id) < parseInt(partner.id);
+              if (!isPrimary) {
+                processedIds.add(item.id);
+                return;
+              }
+              processedIds.add(partnerRecord.id);
+            }
+          }
+        }
+      }
+
+      dedupedTransactions.push(item);
+    });
+
+    return dedupedTransactions.reduce((acc, item) => {
+      const amt = parseFloat(item.amount || 0);
+      const cat = (item.category || "").trim();
+      const catLower = cat.toLowerCase();
+
+      if (item.transaction_type === "Income") {
+        acc.totalIncome += amt;
+        if (catLower === "tithes" || catLower === "tithe") acc.tithes += amt;
+        else if (catLower === "pledge" || catLower.includes("pledge")) acc.pledge += amt;
+        else acc.offering += amt;
+      } else if (item.transaction_type === "Expense") {
+        acc.totalExpenses += amt;
+      }
+      return acc;
+    }, { totalIncome: 0, totalExpenses: 0, tithes: 0, offering: 0, pledge: 0 });
+  })();
 
   const netCashOnHand = metrics.totalIncome - metrics.totalExpenses;
-
-  const formatCurrency = (value) => new Intl.NumberFormat("en-PH", {
-    style: "currency", currency: "PHP",
-    minimumFractionDigits: 2, maximumFractionDigits: 2
-  }).format(value || 0);
-
-  const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString("en-PH", {
-    month: "short", day: "numeric", year: "numeric"
-  });
-
-  const getMemberName = (id) => {
-    if (!id) return null;
-    const match = members.find(m => m.id === parseInt(id));
-    return match ? `${match.first_name} ${match.last_name}` : null;
-  };
 
   return (
     <div className="min-h-screen w-full bg-[#f5f7fb] text-slate-900 antialiased overflow-x-hidden">
@@ -403,7 +472,6 @@ export default function Finance() {
 
         {/* ===== METRICS ===== */}
         <div className="space-y-2 mb-4">
-
           {/* Net Cash — full width */}
           <div className="bg-blue-600 text-white rounded-xl px-4 py-3 shadow-sm">
             <p className="text-[10px] font-bold uppercase tracking-wider text-blue-200 flex items-center gap-1.5">
@@ -454,11 +522,9 @@ export default function Finance() {
         {/* ===== QUICK REPORT + RECENT ACTIVITY ===== */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
 
-          {/* Quick Report — 2 cols on lg */}
+          {/* Quick Report */}
           <div className="lg:col-span-2">
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-
-              {/* Header */}
               <div className="px-3 py-2.5 bg-slate-50/50 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
                   <FaChartBar className="text-blue-500 text-xs" />
@@ -495,10 +561,8 @@ export default function Finance() {
                 </div>
               </div>
 
-              {/* Cards */}
               <div className="p-2.5 space-y-2">
-
-                {/* Tithes */}
+                {/* Tithes Card */}
                 <Link to="/ministries/finance/tithes" className="block bg-blue-50/50 border border-blue-100 rounded-xl p-2.5 hover:shadow-md hover:-translate-y-0.5 transition-all">
                   <div className="flex items-center gap-2 mb-1.5">
                     <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -531,7 +595,7 @@ export default function Finance() {
                   </div>
                 </Link>
 
-                {/* Offering */}
+                {/* Offering Card */}
                 <Link to="/ministries/finance/offering" className="block bg-amber-50/50 border border-amber-100 rounded-xl p-2.5 hover:shadow-md hover:-translate-y-0.5 transition-all">
                   <div className="flex items-center gap-2 mb-1.5">
                     <div className="w-7 h-7 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -556,7 +620,7 @@ export default function Finance() {
                   </div>
                 </Link>
 
-                {/* Pledge */}
+                {/* Pledge Card */}
                 <Link to="/ministries/finance/pledge" className="block bg-purple-50/50 border border-purple-100 rounded-xl p-2.5 hover:shadow-md hover:-translate-y-0.5 transition-all">
                   <div className="flex items-center gap-2 mb-1.5">
                     <div className="w-7 h-7 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -564,7 +628,7 @@ export default function Finance() {
                     </div>
                     <div>
                       <p className="text-xs font-black text-slate-800 leading-tight">Pledge</p>
-                      <p className="text-[10px] font-bold text-slate-400 leading-tight">
+                      <p className="text-[10px] font-bold text-slate-400 navigate-tight">
                         {reportView === "monthly" ? "This Month" : "This Year"}
                       </p>
                     </div>
@@ -583,7 +647,7 @@ export default function Finance() {
                   </div>
                 </Link>
 
-                {/* Quick Add */}
+                {/* Quick Add Form */}
                 <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-2">
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <div className="w-6 h-6 bg-emerald-100 rounded-md flex items-center justify-center flex-shrink-0">
@@ -597,7 +661,6 @@ export default function Finance() {
                     </div>
                   </div>
 
-                  {/* Warning if record exists */}
                   {quickExistingId && (
                     <div className="bg-amber-100 border border-amber-200 rounded-md px-2 py-1 mb-1.5">
                       <p className="text-[9px] text-amber-700 font-bold">
@@ -607,7 +670,6 @@ export default function Finance() {
                   )}
 
                   <form onSubmit={handleQuickAdd} className="space-y-1.5">
-                    {/* Date picker */}
                     <input
                       type="date"
                       value={quickDate}
@@ -623,7 +685,7 @@ export default function Finance() {
                         onChange={(e) => setQuickAmount(e.target.value)}
                         placeholder="₱ Amount"
                         required
-                        className="w-full bg-white border border-slate-200 rounded-md px-2 py-1 text-[11px] font-bold text-slate-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/10"
+                        className="w-full bg-white border border-slate-200 rounded-md px-2 py-1 text-[11px] font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
                       />
                       <select
                         value={quickCategory}
@@ -640,7 +702,7 @@ export default function Finance() {
                       value={quickDescription}
                       onChange={(e) => setQuickDescription(e.target.value)}
                       placeholder="Description (optional)"
-                      className="w-full bg-white border border-slate-200 rounded-md px-2 py-1 text-[11px] font-semibold text-slate-700 focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-white border border-slate-200 text-emerald-600 rounded-md px-2 py-1 text-[11px] font-semibold text-slate-700 focus:outline-none focus:border-emerald-500"
                     />
                     <button
                       type="submit"
@@ -659,7 +721,7 @@ export default function Finance() {
             </div>
           </div>
 
-          {/* Recent Activity — 3 cols on lg */}
+          {/* Recent Activity */}
           <div className="lg:col-span-3">
             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
               <div className="px-3 py-2.5 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
@@ -795,7 +857,7 @@ export default function Finance() {
                               type="button"
                               disabled={submitting}
                               onClick={() => handleUpdateTransaction(tx.id)}
-                              className="px-2.5 py-1 text-[11px] font-bold bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1 cursor-pointer"
+                              className="px-2.5 py-1 text-[11px] font-bold bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1 cursor-pointer"
                             >
                               {submitting && <FaSpinner className="animate-spin text-[9px]" />}
                               Save
@@ -807,7 +869,6 @@ export default function Finance() {
 
                     return (
                       <div key={tx.id} className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50/50 transition-colors">
-                        {/* Left: date + badge */}
                         <div className="flex flex-col gap-0.5 flex-shrink-0 w-[78px]">
                           <span className="text-[10px] font-bold text-slate-400 leading-tight">
                             {formatDate(tx.date)}
@@ -821,7 +882,6 @@ export default function Finance() {
                           </span>
                         </div>
 
-                        {/* Middle: description + member */}
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-semibold text-slate-800 truncate leading-tight">
                             {tx.description || <span className="text-slate-300 italic">No description</span>}
@@ -833,7 +893,6 @@ export default function Finance() {
                           )}
                         </div>
 
-                        {/* Right: amount + edit */}
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           <span className={`text-xs font-bold tabular-nums ${isIncome ? "text-emerald-600" : "text-rose-600"}`}>
                             {isIncome ? "+" : "-"}{formatCurrency(tx.amount)}

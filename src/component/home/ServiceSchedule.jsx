@@ -16,8 +16,9 @@ import {
 } from "react-icons/fa";
 
 // Import your update images here
-// import fathersDayImg from "../../assets/updates/fathers-day.jpg";
-// import youthCampImg from "../../assets/updates/youth-camp.jpg";
+import MothersDayImg from "../../assets/Mday.jpg";
+import YA from "../../assets/ya.jpg";
+import w from "../../assets/w.jpg";
 
 const services = [
   {
@@ -48,22 +49,22 @@ const services = [
 
 const updates = [
   {
-    image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&q=80", // Replace with your uploaded image
-    title: "Father's Day Celebration",
-    date: "June 15, 2025",
-    description: "Join us as we honor and celebrate all fathers in our church family.",
+    image: MothersDayImg, // Simply pass the imported variable directly
+    title: "Mother's Day Celebration",
+    date: "May 12, 2026",
+    description: "Join us as we honor and celebrate all mothers in our church family.",
   },
   {
-    image: "https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=800&q=80", // Replace with your uploaded image
-    title: "Youth Summer Camp",
-    date: "July 20-22, 2025",
-    description: "A weekend of fun, fellowship, and growing deeper in faith for our youth.",
+    image: YA,
+    title: "Youth Adults Night",
+    date: "May 30, 2026",
+    description: "A weekend of fun, fellowship, and growing deeper in faith for our young adults.",
   },
   {
-    image: "https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=800&q=80", // Replace with your uploaded image
-    title: "Community Outreach",
-    date: "August 5, 2025",
-    description: "Serving our local community with the love of Christ through outreach programs.",
+    image: w,
+    title: "Water Baptism",
+    date: "November 8, 2025",
+    description: "New souls that accept the Lord Jesus",
   },
 ];
 
