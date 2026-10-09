@@ -1,0 +1,205 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+/* =========================
+   GLOBAL RESET
+========================= */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* =========================
+   ROOT LAYOUT
+========================= */
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+}
+
+/* =========================
+   BODY
+========================= */
+body {
+  font-family: 'Inter', sans-serif;
+  background: #020617;
+  color: white;
+  overflow-x: hidden;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+/* =========================
+   MEDIA DEFAULTS
+========================= */
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* =========================
+   FORM ELEMENTS
+========================= */
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+textarea {
+  resize: vertical;
+}
+
+/* =========================
+   LINKS
+========================= */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* =========================
+   LISTS
+========================= */
+ul,
+ol {
+  list-style: none;
+}
+
+/* =========================
+   SELECTION
+========================= */
+::selection {
+  background: #0ea5e9;
+  color: white;
+}
+
+/* =========================
+   IOS SAFARI FIXES
+========================= */
+body,
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Prevent blue tap highlight on mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Better touch behavior */
+button,
+a {
+  touch-action: manipulation;
+}
+
+/* =========================
+   SCROLLBAR
+========================= */
+
+/* Chrome / Edge / Safari */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #020617;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    to bottom,
+    #0ea5e9,
+    #2563eb
+  );
+
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #38bdf8;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #0ea5e9 #020617;
+}
+
+/* =========================
+   RESPONSIVE HELPERS
+========================= */
+
+/* Prevent text overflow */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+span {
+  overflow-wrap: break-word;
+}
+
+/* Better mobile spacing */
+section {
+  width: 100%;
+}
+
+/* Prevent accidental horizontal scroll */
+body {
+  overflow-x: hidden;
+}
+
+/* =========================
+   OPTIONAL UTILITIES
+========================= */
+
+/* Smooth fade animation */
+.fade-in {
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Optional glass effect */
+.glass {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
