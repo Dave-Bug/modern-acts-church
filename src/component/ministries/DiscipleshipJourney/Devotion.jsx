@@ -33,6 +33,39 @@ const getElapsedDaysUpTo = (yearMonth) => {
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+// ============================================================
+// NEW STATUS RULING — day-based, not percentage-based:
+//   0–14            → Attention Required
+//   15–24           → Stable
+//   25 to (days-1)  → Excellent
+//   exactly `days`  → Perfect
+// `days` is the real day count of the month, so October's
+// Perfect is 31, September's is 30, February's is 28/29, etc.
+// ============================================================
+const getStatusFromDays = (score, days) => {
+  if (score >= days) return "Perfect";
+  if (score >= 25) return "Excellent";
+  if (score >= 15) return "Stable";
+  return "Attention";
+};
+
+const STATUS_STYLES = {
+  Perfect:   "text-white bg-violet-600 border-violet-700",
+  Excellent: "text-emerald-700 bg-emerald-50 border-emerald-200",
+  Stable:    "text-amber-700 bg-amber-50 border-amber-200",
+  Attention: "text-rose-700 bg-rose-50 border-rose-200",
+};
+
+function StatusBadge({ status, compact = false }) {
+  return (
+    <span className={`font-bold border ${STATUS_STYLES[status]} ${
+      compact ? "text-[9px] px-2 py-0.5 rounded" : "text-[10px] px-2.5 py-1 rounded-full"
+    }`}>
+      {status === "Attention" ? (compact ? "Attention" : "Attention Required") : status}
+    </span>
+  );
+}
+
 export default function Devotion() {
   const [activeTab, setActiveTab] = useState("monthly");
   const [members, setMembers] = useState([]);
@@ -180,10 +213,14 @@ export default function Devotion() {
           } else if (colNum === 15) {
             cell.alignment = { horizontal: "center", vertical: "middle" };
             cell.numFmt = "0.0%";
-            if (attendancePct >= 0.85) {
+            // NEW tiers matching the ruling (100% = Perfect, ~83.3% = 25/30 Excellent floor, ~50% = 15/30 Stable floor)
+            if (attendancePct >= 1) {
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "EDE9FE" } };
+              cell.font = { color: { argb: "4C1D95" }, bold: true };
+            } else if (attendancePct >= 0.8333) {
               cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "D1FAE5" } };
               cell.font = { color: { argb: "065F46" }, bold: true };
-            } else if (attendancePct >= 0.50) {
+            } else if (attendancePct >= 0.5) {
               cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEDD5" } };
               cell.font = { color: { argb: "9A3412" }, bold: true };
             } else if (attendancePct > 0) {
@@ -215,33 +252,35 @@ export default function Devotion() {
 
   const activeMembers = members.filter(m => m.is_devotion_tracked);
 
+  // NEW: monthly status is now day-based, not percentage-based
   const getMemberStatus = (member) => {
     const record = scores.find(s => s.member_id === member.id && s.tracking_month === selectedMonth);
     const currentScore = record ? record.score : 0;
-    const percent = (currentScore / daysInMonth) * 100;
-    
-    if (percent === 100) return "Excellent";
-    if (percent >= 75) return "Stable";
-    return "Attention";
+    return getStatusFromDays(currentScore, daysInMonth);
   };
 
+  // NEW: annual status — Perfect only when every elapsed day is covered;
+  // otherwise the same monthly ruling is applied to the leader's
+  // average month (annual score rescaled to a 30-day month).
   const getAnnualStatus = (member) => {
     const totalScore = scores
       .filter(s => s.member_id === member.id && s.tracking_month.startsWith(currentYear))
       .reduce((sum, s) => sum + s.score, 0);
-    
-    const percent = (totalScore / elapsedDays) * 100;
-    
-    if (percent === 100) return "Excellent";
-    if (percent >= 75) return "Stable";
+
+    if (elapsedDays > 0 && totalScore >= elapsedDays) return "Perfect";
+
+    const avgMonthScore = elapsedDays > 0 ? (totalScore / elapsedDays) * 30 : 0;
+    if (avgMonthScore >= 25) return "Excellent";
+    if (avgMonthScore >= 15) return "Stable";
     return "Attention";
   };
 
-  // FIX: status counts now switch based on active tab
+  // Status counts switch based on active tab
   const currentStatusFn = activeTab === "monthly" ? getMemberStatus : getAnnualStatus;
   
   const statusCounts = {
     All: activeMembers.length,
+    Perfect: activeMembers.filter(m => currentStatusFn(m) === "Perfect").length,
     Excellent: activeMembers.filter(m => currentStatusFn(m) === "Excellent").length,
     Stable: activeMembers.filter(m => currentStatusFn(m) === "Stable").length,
     Attention: activeMembers.filter(m => currentStatusFn(m) === "Attention").length,
@@ -277,7 +316,7 @@ export default function Devotion() {
               <input 
                 type="month" 
                 value={selectedMonth} 
-                onChange={(e) => setSelectedMonth(e.target.value)}
+                onChange={(e) => { if (e.target.value) setSelectedMonth(e.target.value); }}
                 className="bg-transparent border-none text-[11px] md:text-xs font-bold text-slate-700 focus:outline-none cursor-pointer" 
               />
             </div>
@@ -325,20 +364,22 @@ export default function Devotion() {
             />
           </div>
 
-          {/* STATUS FILTER PILLS — now dynamic per tab */}
+          {/* STATUS FILTER PILLS — dynamic per tab, now includes Perfect */}
           <div className="flex items-center gap-1 mt-2 overflow-x-auto no-scrollbar">
             {[
-              { key: "All", label: "All", count: statusCounts.All, color: "slate" },
-              { key: "Excellent", label: "Excellent", count: statusCounts.Excellent, color: "emerald" },
-              { key: "Stable", label: "Stable", count: statusCounts.Stable, color: "amber" },
-              { key: "Attention", label: "Attention", count: statusCounts.Attention, color: "rose" },
+              { key: "All",        label: "All",        count: statusCounts.All,        color: "slate" },
+              { key: "Perfect",    label: "Perfect",    count: statusCounts.Perfect,    color: "violet" },
+              { key: "Excellent",  label: "Excellent",  count: statusCounts.Excellent,  color: "emerald" },
+              { key: "Stable",     label: "Stable",     count: statusCounts.Stable,     color: "amber" },
+              { key: "Attention",  label: "Attention",  count: statusCounts.Attention,  color: "rose" },
             ].map((item) => {
               const isActive = statusFilter === item.key;
               const colorMap = {
-                slate: { bg: "bg-slate-100", text: "text-slate-600", activeBg: "bg-slate-800", activeText: "text-blue-500", border: "border-slate-200" },
-                emerald: { bg: "bg-emerald-50", text: "text-emerald-600", activeBg: "bg-emerald-600", activeText: "text-blue-500", border: "border-emerald-200" },
-                amber: { bg: "bg-amber-50", text: "text-amber-600", activeBg: "bg-amber-500", activeText: "text-blue-500", border: "border-amber-200" },
-                rose: { bg: "bg-rose-50", text: "text-rose-600", activeBg: "bg-rose-500", activeText: "text-blue-500", border: "border-rose-200" },
+                slate:   { bg: "bg-slate-100",  text: "text-slate-600",   activeBg: "bg-slate-800",  border: "border-slate-200" },
+                violet:  { bg: "bg-violet-50",  text: "text-violet-600",  activeBg: "bg-violet-600", border: "border-violet-200" },
+                emerald: { bg: "bg-emerald-50", text: "text-emerald-600", activeBg: "bg-emerald-500", border: "border-emerald-200" },
+                amber:   { bg: "bg-amber-50",   text: "text-amber-600",   activeBg: "bg-amber-500",   border: "border-amber-200" },
+                rose:    { bg: "bg-rose-50",    text: "text-rose-600",    activeBg: "bg-rose-500",    border: "border-rose-200" },
               };
               const theme = colorMap[item.color];
 
@@ -348,7 +389,7 @@ export default function Devotion() {
                   onClick={() => setStatusFilter(item.key)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all border ${
                     isActive 
-                      ? `${theme.activeBg} ${theme.activeText} border-transparent shadow-sm` 
+                      ? `${theme.activeBg} text-white border-transparent shadow-sm` 
                       : `${theme.bg} ${theme.text} ${theme.border} hover:opacity-80`
                   }`}
                 >
@@ -391,7 +432,6 @@ export default function Devotion() {
                     {filteredActiveMembers.map((member) => {
                       const record = scores.find(s => s.member_id === member.id && s.tracking_month === selectedMonth);
                       const currentScore = record ? record.score : 0;
-                      const percent = (currentScore / daysInMonth) * 100;
 
                       return (
                         <tr key={member.id} className="hover:bg-amber-50/20 transition-colors">
@@ -413,13 +453,7 @@ export default function Devotion() {
                             </div>
                           </td>
                           <td className="py-3.5 px-6 text-center">
-                            {percent === 100 ? (
-                              <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full font-bold">Excellent</span>
-                            ) : percent >= 75 ? (
-                              <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full font-bold">Stable</span>
-                            ) : (
-                              <span className="text-[10px] text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-full font-bold">Attention Required</span>
-                            )}
+                            <StatusBadge status={getStatusFromDays(currentScore, daysInMonth)} />
                           </td>
                         </tr>
                       );
@@ -433,7 +467,6 @@ export default function Devotion() {
                 {filteredActiveMembers.map((member) => {
                   const record = scores.find(s => s.member_id === member.id && s.tracking_month === selectedMonth);
                   const currentScore = record ? record.score : 0;
-                  const percent = (currentScore / daysInMonth) * 100;
 
                   return (
                     <div key={member.id} className="p-3 bg-white flex flex-col gap-2">
@@ -441,15 +474,7 @@ export default function Devotion() {
                         <h3 className="font-bold text-sm text-slate-800">
                           {member.first_name} {member.last_name}
                         </h3>
-                        <div>
-                          {percent === 100 ? (
-                            <span className="text-[9px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded font-bold">Excellent</span>
-                          ) : percent >= 75 ? (
-                            <span className="text-[9px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded font-bold">Stable</span>
-                          ) : (
-                            <span className="text-[9px] text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded font-bold">Attention</span>
-                          )}
-                        </div>
+                        <StatusBadge status={getStatusFromDays(currentScore, daysInMonth)} compact />
                       </div>
 
                       <div className="flex items-center justify-between bg-slate-50 p-1.5 rounded-xl border border-slate-100">
@@ -525,12 +550,7 @@ export default function Devotion() {
                             {Math.round((annualTotal / elapsedDays) * 100)}%
                           </td>
                           <td className="py-2.5 px-2 text-center sticky right-0 z-10 bg-white shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.08)]">
-                            {(() => {
-                              const pct = (annualTotal / elapsedDays) * 100;
-                              if (pct === 100) return <span className="text-[8px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-bold">Excellent</span>;
-                              if (pct >= 75) return <span className="text-[8px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-bold">Stable</span>;
-                              return <span className="text-[8px] text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded font-bold">Attention</span>;
-                            })()}
+                            <StatusBadge status={getAnnualStatus(member)} compact />
                           </td>
                         </tr>
                       );
@@ -553,15 +573,7 @@ export default function Devotion() {
                         <h3 className="font-bold text-sm text-slate-800">
                           {member.first_name} {member.last_name}
                         </h3>
-                        <div>
-                          {percent === 100 ? (
-                            <span className="text-[9px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded font-bold">Excellent</span>
-                          ) : percent >= 75 ? (
-                            <span className="text-[9px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded font-bold">Stable</span>
-                          ) : (
-                            <span className="text-[9px] text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded font-bold">Attention</span>
-                          )}
-                        </div>
+                        <StatusBadge status={getAnnualStatus(member)} compact />
                       </div>
 
                       <div className="flex items-center justify-between bg-slate-50 p-2 rounded-xl border border-slate-100">
@@ -574,7 +586,7 @@ export default function Devotion() {
 
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-slate-500 font-medium">Completion:</span>
-                        <span className={`font-mono font-bold text-sm ${percent >= 75 ? 'text-emerald-600' : percent >= 50 ? 'text-amber-600' : 'text-rose-600'}`}>
+                        <span className={`font-mono font-bold text-sm ${percent === 100 ? 'text-violet-600' : percent >= 83 ? 'text-emerald-600' : percent >= 50 ? 'text-amber-600' : 'text-rose-600'}`}>
                           {percent}%
                         </span>
                       </div>
